@@ -1,3 +1,21 @@
+void reader(App* self, int c)
+{
+     SCI_WRITE(&sci0, "Rcv: \'");
+     SCI_WRITECHAR(&sci0,c);
+     SCI_WRITE(&sci0, "\'\n");
+
+    if(c == 'e') {
+        int num;
+        self->c[self->count] = '\0';
+        num = atoi(self->c);
+   
+        self->count = 0;
+        print_key(num);
+        
+    } else if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
+        self->c[self->count++] = c;
+    }
+}
 #ifndef PERIODS_H
 #define PERIODS_H
 

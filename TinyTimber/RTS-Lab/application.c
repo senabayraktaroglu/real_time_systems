@@ -1,10 +1,8 @@
-
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include "periods.h"
 
 typedef struct {
     Object super;
@@ -15,17 +13,15 @@ typedef struct {
 
 } App;
 
-App app = { initObject(), 0, 'X', {0}, 0  };
+App app = { initObject(), 0, 'X', {0},0  };
 
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
-void print_key(int);
 
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 
 Can can0 = initCan(CAN_PORT0, &app, receiver);
-
 
 void receiver(App* self, int unused)
 {
@@ -34,48 +30,36 @@ void receiver(App* self, int unused)
     SCI_WRITE(&sci0, "Can msg received: ");
     SCI_WRITE(&sci0, msg.buff);
 }
-//The period for keys (in micro seconds)
-void print_key(int key){
-	int index = key +5 ;
-	char output[500];
-	snprintf(output,200,"Key %d periods are:\n",key);
-	SCI_WRITE(&sci0, output);
-	
-	for(int i=0;i<32;i++) { 
-		char temp[100];
-		snprintf(temp,100,"%d,",periods[index][i]);
-		SCI_WRITE(&sci0, temp);
-	} 
-	SCI_WRITE(&sci0, "\n");
-}
 void three_history(App *self,int num){
     int sum = 0;
     
     if ( self -> nums_count < 3){
        self -> nums[self->nums_count] = num;
-       self -> nums_count ++; 
+       self -> nums_count ++;
        
     }else{
         self-> nums[0] = num;
-		int temp = 0;
-		temp = self -> nums[0];
-		self-> nums[0] = self -> nums[1];
-		self -> nums[1] = self -> nums[2];
-		self -> nums[2] = temp;
+        //made swap if more than 3 elements added
+        int temp = 0;
+        temp = self -> nums[0];
+        self-> nums[0] = self -> nums[1];
+        self -> nums[1] = self -> nums[2];
+        self -> nums[2] = temp;
     }
     
+    //calculate sum in array
     for(int i= 0 ; i < self-> nums_count ; i ++)
     {
         sum += self -> nums[i];
     }
+    
+    //calculate median based on num of elements in array
     int median = 0;
     if ( self -> nums_count == 1)
         median = self -> nums[0];
     else if ( self -> nums_count == 2)
         median = (self -> nums[0] + self -> nums[1])/2;
-    else{ 
-		//char debugmsg[200];
-    
+    else{
         for(int i = 0 ; i < 3 ; i ++)
         {
             if ((self -> nums [(i+2) % 3] <=  self -> nums [(i) % 3])
@@ -89,58 +73,40 @@ void three_history(App *self,int num){
                 {
                     median = self -> nums [i];
                     break;
-                }    
+                }
         }
-    }   
+    }
     char output[200];
     snprintf(output,200,"Entered interger %d: sum = %d, median = %d \n",num,sum,median);
-	//SCI_WRITE(&sci0, "\'\n");
 
     SCI_WRITE(&sci0,output);
+    
+    
+    
    
     
 }
-/*
 void reader(App* self, int c)
 {
-	 SCI_WRITE(&sci0, "Rcv: \'");
-	 SCI_WRITECHAR(&sci0,c);
-	 SCI_WRITE(&sci0, "\'\n");
 
     if(c == 'e') {
         int num;
         self->c[self->count] = '\0';
         num = atoi(self->c);
-   
+        
+        SCI_WRITE(&sci0, "Rcv: \'");
+        SCI_WRITE(&sci0, self->c);
+
+        SCI_WRITE(&sci0, "\'\n");
         self->count = 0;
+        // call three history each time a number is added
         three_history(self,num);
         
     } else if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
         self->c[self->count++] = c;
-    } else if (c=='F'){
-		self->nums_count = 0;
-		SCI_WRITE(&sci0, "The 3-history has been erased \n");
-	}
+    }
 }
-*/
-void reader(App* self, int c)
-{
-	 SCI_WRITE(&sci0, "Rcv: \'");
-	 SCI_WRITECHAR(&sci0,c);
-	 SCI_WRITE(&sci0, "\'\n");
 
-    if(c == 'e') {
-        int num;
-        self->c[self->count] = '\0';
-        num = atoi(self->c);
-   
-        self->count = 0;
-        print_key(num);
-        
-    } else if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
-        self->c[self->count++] = c;
-    } 
-}
 void startApp(App* self, int arg)
 {
     CANMsg msg;
@@ -168,5 +134,3 @@ int main()
     TINYTIMBER(&app, startApp, 0);
     return 0;
 }
-
-
