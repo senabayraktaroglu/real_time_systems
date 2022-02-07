@@ -38,7 +38,12 @@ void three_history(App *self,int num){
        self -> nums_count ++; 
        
     }else{
-        self-> nums[0] = num;
+       self-> nums[0] = num;
+	int temp = 0;
+	temp = self -> nums[0];
+	self-> nums[0] = self -> nums[1];
+	self -> nums[1] = self -> nums[2];
+	self -> nums[2] = temp;
     }
     
     for(int i= 0 ; i < self-> nums_count ; i ++)
