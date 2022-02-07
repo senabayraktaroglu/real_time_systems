@@ -104,6 +104,8 @@ void reader(App* self, int c)
         
     } else if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
         self->c[self->count++] = c;
+    } else if (c=='F'){
+        self -> nums_count == 0;
     }
 }
 
