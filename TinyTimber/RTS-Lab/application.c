@@ -120,16 +120,14 @@ void three_history(App *self,int num){
 }
 void reader(App* self, int c)
 {
+    SCI_WRITE(&sci0, "Rcv: \'");
+    SCI_WRITECHAR(&sci0, c);
 
+    SCI_WRITE(&sci0, "\'\n");
     if(c == 'e') {
         int num;
         self->c[self->count] = '\0';
         num = atoi(self->c);
-        
-        SCI_WRITE(&sci0, "Rcv: \'");
-        SCI_WRITE(&sci0, self->c);
-
-        SCI_WRITE(&sci0, "\'\n");
         self->count = 0;
         // call three history each time a number is added
         three_history(self,num);
@@ -138,6 +136,7 @@ void reader(App* self, int c)
         self->c[self->count++] = c;
     } else if (c=='F'){
         self -> nums_count = 0;
+         SCI_WRITE(&sci0, "The 3-history has been erased \n'");
     }
 }
 
