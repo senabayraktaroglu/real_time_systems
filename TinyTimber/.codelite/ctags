@@ -1,0 +1,37 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+super	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    Object super;$/;"	member	line:40	struct:__anon1	access:public
+count	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int count;$/;"	member	line:41	struct:__anon1	access:public
+c	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    char c[100];$/;"	member	line:42	struct:__anon1	access:public
+nums	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int nums[3];$/;"	member	line:43	struct:__anon1	access:public
+nums_count	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int nums_count ;$/;"	member	line:44	struct:__anon1	access:public
+App	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^typedef struct {     Object super;     int count;     char c[100];     int nums[3];     int nums_count ;  } App; $/;"	typedef	line:46	typeref:struct:__anon1
+app	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^App app = { initObject(), 0, 'X', {0},0  };$/;"	variable	line:48
+reader	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void reader(App*, int);$/;"	prototype	line:50	signature:(App*, int)	returns:void 
+receiver	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void receiver(App*, int);$/;"	prototype	line:51	signature:(App*, int)	returns:void 
+three_history	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void three_history(App *,int);$/;"	prototype	line:52	signature:(App *,int)	returns:void 
+sci0	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^Serial sci0 = initSerial(SCI_PORT0, &app, reader);$/;"	variable	line:54
+can0	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^Can can0 = initCan(CAN_PORT0, &app, receiver);$/;"	variable	line:56
+receiver	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void receiver(App* self, int unused)$/;"	function	line:58	signature:(App* self, int unused)	returns:void 
+reader	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void reader(App* self, int c)$/;"	function	line:65	signature:(App* self, int c)	returns:void 
+startApp	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void startApp(App* self, int arg)$/;"	function	line:83	signature:(App* self, int arg)	returns:void 
+main	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^int main()$/;"	function	line:103	returns:int 
+
