@@ -52,6 +52,12 @@
   <Description/>
   <Dependencies/>
   <VirtualDirectory Name="src">
+    <File Name="UserGuide.md"/>
+    <File Name="RTS-Lab.txt"/>
+    <File Name="RTS-Lab.mk"/>
+    <File Name="periods.h"/>
+    <File Name="compile_flags.txt"/>
+    <File Name="backup.c"/>
     <File Name="application.c" ExcludeProjConfig=""/>
     <File Name="sciTinyTimber.c"/>
     <File Name="sciTinyTimber.h"/>

@@ -1,5 +1,5 @@
 /*back up for part 0, three history function and reader*/
-
+/*
 void three_history(App *self,int num){
     int sum = 0;
     
@@ -16,7 +16,7 @@ void three_history(App *self,int num){
         self -> nums[1] = self -> nums[2];
         self -> nums[2] = temp;
     }
-    
+    clTabCtrl
     //calculate sum in array
     for(int i= 0 ; i < self-> nums_count ; i ++)
     {
@@ -77,3 +77,26 @@ void reader(App* self, int c)
          SCI_WRITE(&sci0, "The 3-history has been erased \n'");
     }
 }
+ * void print_key(int key){
+	if(key<=5&&key>=-5){
+		int offset_key = key + 10;
+		char output_periods[200];
+		SCI_WRITE(&sci0, "Key: ");
+		sprintf(output_periods,"%d ",key);
+		SCI_WRITE(&sci0,output_periods);
+		
+		SCI_WRITE(&sci0, "\nPeriods: ");
+		for(int i=0;i<32;i++){
+			sprintf(output_periods,"%d ",(int)(1000000*periods[myIndex[i]+offset_key]));
+			SCI_WRITE(&sci0,output_periods);
+		}
+		
+		SCI_WRITE(&sci0, "micro seconds \n");
+		
+	}else{
+		SCI_WRITE(&sci0, "Not valid key \n");
+	}
+	
+	
+}
+*/

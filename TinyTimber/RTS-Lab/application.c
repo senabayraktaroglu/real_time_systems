@@ -35,6 +35,9 @@ Entered integer -1: sum = 12, median = -1
 #include "canTinyTimber.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "periods.h"
+
+#define DAC_port ((volatile unsigned char*) 0x4000741C)
 
 typedef struct {
     Object super;
@@ -42,17 +45,23 @@ typedef struct {
     char c[100];
     int nums[3];
     int nums_count ;
-
 } App;
+
+/*Task for loop load runnning in background*/
+typedef struct {
+    Object super;
+    int loop_number;
+} Bg_Loop;
 
 typedef struct {
     Object super;
-    int backgroud_loop = 1000;
-
-} Bg_Loop;
+	int flag;
+	int volumn;
+}Sound;
 
 App app = { initObject(), 0, 'X', {0},0  };
-
+Sound generator = { initObject(), 0 , 5};
+Bg_Loop load =  { initObject(), 1000};
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
@@ -68,33 +77,81 @@ void receiver(App* self, int unused)
     SCI_WRITE(&sci0, "Can msg received: ");
     SCI_WRITE(&sci0, msg.buff);
 }
-void print_key(int key){
-    SCI_WRITE(&sci0, "Key: ");
-    SCI_WRITECHAR(&sci0,key);
-    SCI_WRITE(&sci0, "\n");
-    *DAC_port = 0x02;
+
+
+void volume_control (Sound* self, int inc){
+	if(inc==1&&self->volumn<10)
+		self->volumn ++;
+	else if (inc==0&&self->volumn>1)
+		self->volumn --;
+}	
+void load_control (Bg_Loop* self, int inc){
+	if(inc==1&&self->loop_number<8000)
+		self->loop_number += 500;
+	else if (inc==0&&self->loop_number>1000)
+		self->loop_number -= 500;
+}	
+void mute (Sound* self){
+	if(self->volumn == 0){
+		self->volumn = 5;
+	}else{
+		self->volumn = 0;
+	}	
 }
-void sound(){
-    *DAC_port = 0x00;
-    AFTER(USEC(500),&task2,do_more_work,1);
+void startLoop(Bg_Loop* self,int arg){
+	for(int i=0;i<self->loop_number;i++){
+		
+	}
+	AFTER(USEC(1300),self,startLoop,0);
 }
+void startSound(Sound* self, int arg){
+    self->flag = !self->flag;
+	if(self->flag){
+		*DAC_port = self->volumn;
+	}else{
+		*DAC_port = 0x00;
+	}
+    AFTER(USEC(650),self,startSound,0);
+}
+
+
 void reader(App* self, int c)
 {
      SCI_WRITE(&sci0, "Rcv: \'");
      SCI_WRITECHAR(&sci0,c);
      SCI_WRITE(&sci0, "\'\n");
-
-    if(c == 'e') {
-        int num;
-        self->c[self->count] = '\0';
-        num = atoi(self->c);
-   
-        self->count = 0;
-        print_key(num);
-        
-    } else if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
+	 int num;
+	switch(c) {
+		case 'e':
+			
+			self->c[self->count] = '\0';
+			num = atoi(self->c);
+	   
+			self->count = 0;
+		   // print_key(num);
+		   break;
+		case 'u':
+			volume_control(&generator,1);
+			break;
+		
+		case'd':
+			//SCI_WRITE(&sci0, "Down is pressed");
+			volume_control(&generator,0);
+			break;
+		case 'm':
+			mute(&generator);
+			break;
+		case 'w':
+			load_control(&load,1);
+			break;
+		case 's':
+			load_control(&load,0);
+			break;
+		
+	}
+	if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
         self->c[self->count++] = c;
-    }
+	}
 }
 void startApp(App* self, int arg)
 {
@@ -114,6 +171,9 @@ void startApp(App* self, int arg)
     msg.buff[4] = 'o';
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
+	ASYNC(&generator,startSound,0);
+	ASYNC(&load,startLoop,0);
+
 }
 
 int main()

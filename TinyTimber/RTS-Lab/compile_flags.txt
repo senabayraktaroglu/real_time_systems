@@ -1,10 +1,4 @@
--Ic:\cseapp\CodeLite\tools\gcc-arm\arm-none-eabi\include\c++\9.2.1
--Ic:\cseapp\CodeLite\tools\gcc-arm\arm-none-eabi\include\c++\9.2.1\arm-none-eabi
--Ic:\cseapp\CodeLite\tools\gcc-arm\arm-none-eabi\include\c++\9.2.1\backward
--Ic:\cseapp\CodeLite\tools\gcc-arm\lib\gcc\arm-none-eabi\9.2.1\include
--Ic:\cseapp\CodeLite\tools\gcc-arm\lib\gcc\arm-none-eabi\9.2.1\include-fixed
--Ic:\cseapp\CodeLite\tools\gcc-arm\arm-none-eabi\include
--IE:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab
--IE:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\device\inc
--IE:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\driver\inc
+-IZ:\RTS-LAB-git\real_time_systems\TinyTimber\RTS-Lab
+-IZ:\RTS-LAB-git\real_time_systems\TinyTimber\RTS-Lab\device\inc
+-IZ:\RTS-LAB-git\real_time_systems\TinyTimber\RTS-Lab\driver\inc
 -DSTM32F40_41xxx

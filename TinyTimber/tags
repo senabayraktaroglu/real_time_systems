@@ -1,0 +1,2 @@
+three_history	Z:\RTS-LAB-git\real_time_systems\TinyTimber\RTS-Lab\backup.c	/^void three_history(App *self,int num){$/;"	function	line:3	signature:(App *self,int num)	returns:void 
+reader	Z:\RTS-LAB-git\real_time_systems\TinyTimber\RTS-Lab\backup.c	/^void reader(App* self, int c)$/;"	function	line:59	signature:(App* self, int c)	returns:void 
