@@ -38,7 +38,7 @@ Entered integer -1: sum = 12, median = -1
 #include "periods.h"
 
 #define DAC_port ((volatile unsigned char*) 0x4000741C)
-
+int  deadline_enabled = 0;
 typedef struct {
     Object super;
     int count;
@@ -102,7 +102,11 @@ void startLoop(Bg_Loop* self,int arg){
 	for(int i=0;i<self->loop_number;i++){
 		
 	}
+	if(deadline_enabled){
+		SEND(USEC(1300),USEC(1300),self,startLoop,0);
+	}else{
 	AFTER(USEC(1300),self,startLoop,0);
+	}
 }
 void startSound(Sound* self, int arg){
     self->flag = !self->flag;
@@ -111,7 +115,11 @@ void startSound(Sound* self, int arg){
 	}else{
 		*DAC_port = 0x00;
 	}
-    AFTER(USEC(650),self,startSound,0);
+	if(deadline_enabled){
+		SEND(USEC(650),USEC(100),self,startSound,0);
+	}else{
+    	AFTER(USEC(650),self,startSound,0);
+	}
 }
 
 
@@ -130,11 +138,11 @@ void reader(App* self, int c)
 			self->count = 0;
 		   // print_key(num);
 		   break;
-		case 'u':
+		case 'q':
 			volume_control(&generator,1);
 			break;
 		
-		case'd':
+		case 'a':
 			//SCI_WRITE(&sci0, "Down is pressed");
 			volume_control(&generator,0);
 			break;
@@ -147,7 +155,16 @@ void reader(App* self, int c)
 		case 's':
 			load_control(&load,0);
 			break;
-		
+		case 'd':
+			if(deadline_enabled==0){
+				deadline_enabled = 1;
+				SCI_WRITE(&sci0, "Deadline is enabled \n");
+			}else{
+				deadline_enabled = 0;
+				SCI_WRITE(&sci0, "Deadline is disabled \n");
+			}
+			break;
+
 	}
 	if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
         self->c[self->count++] = c;
