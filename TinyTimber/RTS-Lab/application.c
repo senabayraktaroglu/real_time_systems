@@ -86,10 +86,19 @@ void volume_control (Sound* self, int inc){
 		self->volumn --;
 }	
 void load_control (Bg_Loop* self, int inc){
-	if(inc==1&&self->loop_number<8000)
+	if(inc==1){
+	//&&self->loop_number<8000)
 		self->loop_number += 500;
-	else if (inc==0&&self->loop_number>1000)
-		self->loop_number -= 500;
+		char loopmsg[100];
+		snprintf(loopmsg,100,"loop number is  %d \n",self->loop_number);
+		 SCI_WRITE(&sci0,loopmsg);
+	}
+	else if (inc==0&&self->loop_number>1000){
+		self->loop_number -= 500;	
+		char loopmsg[100];
+		snprintf(loopmsg,100,"loop number is  %d \n",self->loop_number);
+		 SCI_WRITE(&sci0,loopmsg);
+	}
 }	
 void mute (Sound* self){
 	if(self->volumn == 0){
@@ -108,6 +117,10 @@ void startLoop(Bg_Loop* self,int arg){
 	AFTER(USEC(1300),self,startLoop,0);
 	}
 }
+/* 1kHZ : 500us  
+769HZ: 650us
+537HZ: 
+*/
 void startSound(Sound* self, int arg){
     self->flag = !self->flag;
 	if(self->flag){
@@ -116,9 +129,9 @@ void startSound(Sound* self, int arg){
 		*DAC_port = 0x00;
 	}
 	if(deadline_enabled){
-		SEND(USEC(650),USEC(100),self,startSound,0);
+		SEND(USEC(500),USEC(100),self,startSound,0);
 	}else{
-    	AFTER(USEC(650),self,startSound,0);
+    	AFTER(USEC(500),self,startSound,0);
 	}
 }
 
