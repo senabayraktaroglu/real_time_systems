@@ -37,8 +37,12 @@ Entered integer -1: sum = 12, median = -1
 #include <stdio.h>
 #include "periods.h"
 
+
 #define DAC_port ((volatile unsigned char*) 0x4000741C)
 int  deadline_enabled = 0;
+int counter = 0;
+long time = 0;
+long Max_exe = 0;
 typedef struct {
     Object super;
     int count;
@@ -51,6 +55,9 @@ typedef struct {
 typedef struct {
     Object super;
     int loop_number;
+	int disable ;
+	Timer timer;
+	
 } Bg_Loop;
 
 typedef struct {
@@ -58,11 +65,14 @@ typedef struct {
 	int flag;
 	int volumn;
 	int prev_volumn;
+	int disable ;
+	Timer timer;
+	
 }Sound;
 
 App app = { initObject(), 0, 'X', {0},0  };
-Sound generator = { initObject(), 0 , 10,0};
-Bg_Loop load =  { initObject(), 1000};
+Sound generator = { initObject(), 0 , 10,0,0,initTimer()};
+Bg_Loop load =  { initObject(), 1000,0,initTimer()};
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
@@ -110,31 +120,89 @@ void mute (Sound* self){
 	}	
 }
 void startLoop(Bg_Loop* self,int arg){
-	for(int i=0;i<self->loop_number;i++){
-		
-	}
+	//for (int j = 0; j < 50;j++){
+		for(int i=0;i<500; i++){
+			Time start = CURRENT_OFFSET();
+				for(int i=0;i<1000;i++){
+			
+				}
+			
+			Time end = CURRENT_OFFSET();
+			Time diff = end -start;
+			long diff_time = USEC_OF(diff);
+			char WCET[100];
+
+			if(diff_time>Max_exe) Max_exe = diff_time;
+			time += diff_time;
+			//snprintf(WCET,100,"DIFF %ld %ld %ld\n",diff_time,time,Max_exe);
+			//SCI_WRITE(&sci0,WCET);
+		}
+//	}
+
+
+    
+    long avg_execution_time = time / 500;
+	char WCET[100];
+	snprintf(WCET,100,"Avg WCET:  %ld Max WCET: %ld  \n",avg_execution_time,Max_exe);
+	SCI_WRITE(&sci0,WCET);
+	
+	/*
 	if(deadline_enabled){
 		SEND(USEC(1300),USEC(1300),self,startLoop,0);
 	}else{
 		AFTER(USEC(1300),self,startLoop,0);
 	}
+	*/
 }
+
+ 
 /* 1kHZ : 500us  
 769HZ: 650us
 537HZ: 931us
 */
 void startSound(Sound* self, int arg){
-    self->flag = !self->flag;
-	if(self->flag){
-		*DAC_port = self->volumn;
-	}else{
-		*DAC_port = 0x00;
+    counter++;
+   Time start = CURRENT_OFFSET(); 
+   for (int j = 0; j < 1000;j++){
+	Time start = CURRENT_OFFSET();   
+	   	for(int i=0;i<1000; i++){
+		
+		self->flag = !self->flag;
+	
+		if(self->flag){
+			*DAC_port = self->volumn;
+		}else{
+			*DAC_port = 0x00;
+		}
+		
+
 	}
+	Time end = CURRENT_OFFSET();
+	Time diff = end -start;
+	long diff_time = USEC_OF(diff);
+	
+	if(diff_time>Max_exe) Max_exe = diff_time;
+	time += diff_time;
+   }
+	
+	
+	//if(diff_time>Max_exe) Max_exe = diff_time;
+	
+
+    
+    long avg_execution_time = time / (1000);
+	char WCET[100];
+	snprintf(WCET,100,"Avg WCET:  %ld Max WCET: %ld  \n",avg_execution_time,Max_exe);
+	SCI_WRITE(&sci0,WCET);
+   
+ /*
 	if(deadline_enabled){
 		SEND(USEC(500),USEC(100),self,startSound,0);
 	}else{
-    	AFTER(USEC(500),self,startSound,0);
+		AFTER(USEC(500),self,startSound,0);
 	}
+	 */
+   
 }
 
 
@@ -209,7 +277,7 @@ void startApp(App* self, int arg)
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
 	ASYNC(&generator,startSound,0);
-	ASYNC(&load,startLoop,0);
+	//ASYNC(&load,startLoop,0);
 
 }
 
