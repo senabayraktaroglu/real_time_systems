@@ -57,10 +57,11 @@ typedef struct {
     Object super;
 	int flag;
 	int volumn;
+	int prev_volumn;
 }Sound;
 
 App app = { initObject(), 0, 'X', {0},0  };
-Sound generator = { initObject(), 0 , 5};
+Sound generator = { initObject(), 0 , 10,0};
 Bg_Loop load =  { initObject(), 1000};
 void reader(App*, int);
 void receiver(App*, int);
@@ -80,7 +81,7 @@ void receiver(App* self, int unused)
 
 
 void volume_control (Sound* self, int inc){
-	if(inc==1&&self->volumn<10)
+	if(inc==1&&self->volumn<20)
 		self->volumn ++;
 	else if (inc==0&&self->volumn>1)
 		self->volumn --;
@@ -102,8 +103,9 @@ void load_control (Bg_Loop* self, int inc){
 }	
 void mute (Sound* self){
 	if(self->volumn == 0){
-		self->volumn = 5;
+		self->volumn = self->prev_volumn;
 	}else{
+		self->prev_volumn = self->volumn;
 		self->volumn = 0;
 	}	
 }
@@ -114,12 +116,12 @@ void startLoop(Bg_Loop* self,int arg){
 	if(deadline_enabled){
 		SEND(USEC(1300),USEC(1300),self,startLoop,0);
 	}else{
-	AFTER(USEC(1300),self,startLoop,0);
+		AFTER(USEC(1300),self,startLoop,0);
 	}
 }
 /* 1kHZ : 500us  
 769HZ: 650us
-537HZ: 
+537HZ: 931us
 */
 void startSound(Sound* self, int arg){
     self->flag = !self->flag;
@@ -152,21 +154,26 @@ void reader(App* self, int c)
 		   // print_key(num);
 		   break;
 		case 'q':
-			volume_control(&generator,1);
+			//volume_control(&generator,1);
+			ASYNC(&generator,volume_control,1);
 			break;
 		
 		case 'a':
 			//SCI_WRITE(&sci0, "Down is pressed");
-			volume_control(&generator,0);
+			//volume_control(&generator,0);
+			ASYNC(&generator,volume_control,0);
 			break;
 		case 'm':
-			mute(&generator);
+			//mute(&generator);
+			ASYNC(&generator,mute,0);
 			break;
 		case 'w':
-			load_control(&load,1);
+			//load_control(&load,1);
+			ASYNC(&load,load_control,1);
 			break;
 		case 's':
-			load_control(&load,0);
+			//load_control(&load,0);
+			ASYNC(&load,load_control,0);
 			break;
 		case 'd':
 			if(deadline_enabled==0){
