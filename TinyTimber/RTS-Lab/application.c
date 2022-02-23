@@ -1,34 +1,29 @@
 
 /*
 User guide:
-Compile and upload the .s19 file to the experiment board, type "go 20000000" to start the execution.
-Use keyboard to input or clear numbers for three-history function. Type positive or negative numbers on keyboard and type an 'e' to represent the end of input. 
-After inputing each number, the application will print out the current input, the sum and the median of the numbers.
-'F' is used to clear the history of numbers. 
+ 
+ Compile and upload the .s19 file to the experiment board, type "go" to start the execution.
+ 
+ VOLUME CONTROL
+ 
+ - For increasing volume press "q"
+ - For decreasing press "a"
+ 
+ MUTE CONTROL
+ 
+ - For mute and unmute press "m"
+ 
+ LOAD CONTROL
+ 
+ - For increasing background load press "w"
+ - For decreasing background load press "s"
+ 
+ DEADLINE CONTROL
+  
+ - For enable and disable deadline press "d"
+ 
+ */
 
-Example input:
-F 13e -7e 20e -1e
-
-Example output:
-Rcv: ’F’
-The 3-history has been erased
-Rcv: ’1’
-Rcv: ’3’
-Rcv: ’e’
-Entered integer 13: sum = 13, median = 13
-Rcv: ’-’
-Rcv: ’7’
-Rcv: ’e’
-Entered integer -7: sum = 6, median = 3
-Rcv: ’2’
-Rcv: ’0’
-Rcv: ’e’
-Entered integer 20: sum = 26, median = 13
-Rcv: ’-’
-Rcv: ’1’
-Rcv: ’e’
-Entered integer -1: sum = 12, median = -1
-*/
 
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
@@ -38,7 +33,6 @@ Entered integer -1: sum = 12, median = -1
 #include "periods.h"
 
 #define DAC_port ((volatile unsigned char*) 0x4000741C)
-int  deadline_enabled = 0;
 typedef struct {
     Object super;
     int count;
@@ -47,21 +41,33 @@ typedef struct {
     int nums_count ;
 } App;
 
-/*Task for loop load runnning in background*/
+/* Application class for background loop
+*  loop number: number of iterations for the empty loop
+* deadline_enabled: the deadline enabled state, 0 for false(disabled) 1 for true(enabled)
+*/
 typedef struct {
     Object super;
     int loop_number;
+	int  deadline_enabled;
 } Bg_Loop;
 
+/* Application class for sound generator
+*  flag: whether to write 0 or 1 to the DAC port
+* volumn: the current output volumn for sound generator
+* pre_volumn: keeps the previous volumn before muted
+* deadline_enabled: the deadline enabled state, 0 for false(disabled) 1 for true(enabled)
+*/
 typedef struct {
     Object super;
 	int flag;
 	int volumn;
+	int prev_volumn;
+	int  deadline_enabled;
 }Sound;
 
 App app = { initObject(), 0, 'X', {0},0  };
-Sound generator = { initObject(), 0 , 5};
-Bg_Loop load =  { initObject(), 1000};
+Sound generator = { initObject(), 0 , 10,0,0};
+Bg_Loop load =  { initObject(), 1000,0};
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
@@ -80,7 +86,7 @@ void receiver(App* self, int unused)
 
 
 void volume_control (Sound* self, int inc){
-	if(inc==1&&self->volumn<10)
+	if(inc==1&&self->volumn<20)
 		self->volumn ++;
 	else if (inc==0&&self->volumn>1)
 		self->volumn --;
@@ -102,8 +108,9 @@ void load_control (Bg_Loop* self, int inc){
 }	
 void mute (Sound* self){
 	if(self->volumn == 0){
-		self->volumn = 5;
+		self->volumn = self->prev_volumn;
 	}else{
+		self->prev_volumn = self->volumn;
 		self->volumn = 0;
 	}	
 }
@@ -111,15 +118,15 @@ void startLoop(Bg_Loop* self,int arg){
 	for(int i=0;i<self->loop_number;i++){
 		
 	}
-	if(deadline_enabled){
+	if(self->deadline_enabled){
 		SEND(USEC(1300),USEC(1300),self,startLoop,0);
 	}else{
-	AFTER(USEC(1300),self,startLoop,0);
+		AFTER(USEC(1300),self,startLoop,0);
 	}
 }
 /* 1kHZ : 500us  
 769HZ: 650us
-537HZ: 
+537HZ: 931us
 */
 void startSound(Sound* self, int arg){
     self->flag = !self->flag;
@@ -128,7 +135,7 @@ void startSound(Sound* self, int arg){
 	}else{
 		*DAC_port = 0x00;
 	}
-	if(deadline_enabled){
+	if(self->deadline_enabled){
 		SEND(USEC(500),USEC(100),self,startSound,0);
 	}else{
     	AFTER(USEC(500),self,startSound,0);
@@ -152,28 +159,35 @@ void reader(App* self, int c)
 		   // print_key(num);
 		   break;
 		case 'q':
-			volume_control(&generator,1);
+			//volume_control(&generator,1);
+			ASYNC(&generator,volume_control,1);
 			break;
 		
 		case 'a':
 			//SCI_WRITE(&sci0, "Down is pressed");
-			volume_control(&generator,0);
+			//volume_control(&generator,0);
+			ASYNC(&generator,volume_control,0);
 			break;
 		case 'm':
-			mute(&generator);
+			//mute(&generator);
+			ASYNC(&generator,mute,0);
 			break;
 		case 'w':
-			load_control(&load,1);
+			//load_control(&load,1);
+			ASYNC(&load,load_control,1);
 			break;
 		case 's':
-			load_control(&load,0);
+			//load_control(&load,0);
+			ASYNC(&load,load_control,0);
 			break;
 		case 'd':
-			if(deadline_enabled==0){
-				deadline_enabled = 1;
+			if(load.deadline_enabled==0){
+				load.deadline_enabled = 1;
+				generator.deadline_enabled = 1;
 				SCI_WRITE(&sci0, "Deadline is enabled \n");
 			}else{
-				deadline_enabled = 0;
+				load.deadline_enabled = 0;
+				generator.deadline_enabled = 0;
 				SCI_WRITE(&sci0, "Deadline is disabled \n");
 			}
 			break;
