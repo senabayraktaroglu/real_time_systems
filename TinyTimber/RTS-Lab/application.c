@@ -66,11 +66,12 @@ typedef struct {
 }Sound;
 
 App app = { initObject(), 0, 'X', {0},0  };
-Sound generator = { initObject(), 0 , 10,0,0};
+Sound generator = { initObject(), 0 , 5,0,1};
 Bg_Loop load =  { initObject(), 1000,0};
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
+void startSound(Sound* , int);
 
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 
@@ -128,7 +129,15 @@ void startLoop(Bg_Loop* self,int arg){
 769HZ: 650us
 537HZ: 931us
 */
+void gap(Sound*self, int arg){
+	*DAC_port = 0x00;
+	AFTER(MSEC(50),self,startSound,0);
+}
+void play(){
+
+}
 void startSound(Sound* self, int arg){
+	SEND(play,)
     self->flag = !self->flag;
 	if(self->flag){
 		*DAC_port = self->volumn;
@@ -140,6 +149,7 @@ void startSound(Sound* self, int arg){
 	}else{
     	AFTER(USEC(500),self,startSound,0);
 	}
+	AFTER(MSEC(500),self,gap,1);
 }
 
 
@@ -216,7 +226,7 @@ void startApp(App* self, int arg)
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
 	ASYNC(&generator,startSound,0);
-	ASYNC(&load,startLoop,0);
+//	ASYNC(&load,startLoop,0);
 
 }
 
