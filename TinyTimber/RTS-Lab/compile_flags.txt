@@ -1,5 +1,5 @@
--I/Users/SenaBayraktaroglu/Documents/TinyTimber/RTS-Lab
--I/Users/SenaBayraktaroglu/Documents/TinyTimber/RTS-Lab/$(ProjectPath)
--I/Users/SenaBayraktaroglu/Documents/TinyTimber/RTS-Lab/$(ProjectPath)/device/inc
--I/Users/SenaBayraktaroglu/Documents/TinyTimber/RTS-Lab/$(ProjectPath)/driver/inc
+-I/Users/SenaBayraktaroglu/Documents/real_time_project/real_time_systems/TinyTimber/RTS-Lab
+-I/Users/SenaBayraktaroglu/Documents/real_time_project/real_time_systems/TinyTimber/RTS-Lab/$(ProjectPath)
+-I/Users/SenaBayraktaroglu/Documents/real_time_project/real_time_systems/TinyTimber/RTS-Lab/$(ProjectPath)/device/inc
+-I/Users/SenaBayraktaroglu/Documents/real_time_project/real_time_systems/TinyTimber/RTS-Lab/$(ProjectPath)/driver/inc
 -DSTM32F40_41xxx

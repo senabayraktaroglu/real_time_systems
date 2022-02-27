@@ -1,23 +1,81 @@
+
+/*
+User guide:
+ 
+ Compile and upload the .s19 file to the experiment board, type "go" to start the execution.
+ 
+ VOLUME CONTROL
+ 
+ - For increasing volume press "q"
+ - For decreasing press "a"
+ 
+ MUTE CONTROL
+ 
+ - For mute and unmute press "m"
+ 
+ LOAD CONTROL
+ 
+ - For increasing background load press "w"
+ - For decreasing background load press "s"
+ 
+ DEADLINE CONTROL
+  
+ - For enable and disable deadline press "d"
+ 
+ */
+
+
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "periods.h"
 
+#define DAC_port ((volatile unsigned char*) 0x4000741C)
 typedef struct {
     Object super;
     int count;
     char c[100];
     int nums[3];
     int nums_count ;
-
 } App;
 
-App app = { initObject(), 0, 'X', {0},0  };
+/* Application class for background loop
+*  loop number: number of iterations for the empty loop
+* deadline_enabled: the deadline enabled state, 0 for false(disabled) 1 for true(enabled)
+*/
+typedef struct {
+    Object super;
+    int loop_number;
+	int  deadline_enabled;
+} Bg_Loop;
 
+/* Application class for sound generator
+*  flag: whether to write 0 or 1 to the DAC port
+* volumn: the current output volumn for sound generator
+* pre_volumn: keeps the previous volumn before muted
+* deadline_enabled: the deadline enabled state, 0 for false(disabled) 1 for true(enabled)
+*/
+typedef struct {
+    Object super;
+	int flag;
+	int volumn;
+	int prev_volumn;
+	int  deadline_enabled;
+    int gap;
+    int note;
+    int bpm;
+    int period;
+}Sound;
+
+App app = { initObject(), 0, 'X', {0},0  };
+Sound generator = { initObject(), 0 , 5,0,1,0,0,250,0};
+Bg_Loop load =  { initObject(), 1000,0};
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
+void startSound(Sound* , int);
 
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 
@@ -30,74 +88,138 @@ void receiver(App* self, int unused)
     SCI_WRITE(&sci0, "Can msg received: ");
     SCI_WRITE(&sci0, msg.buff);
 }
-void three_history(App *self,int num){
-    int sum = 0;
-    
-    if ( self -> nums_count < 3){
-       self -> nums[self->nums_count] = num;
-       self -> nums_count ++; 
-       
-    }else{
-        self-> nums[0] = num;
-    }
-    
-    for(int i= 0 ; i < self-> nums_count ; i ++)
-    {
-        sum += self -> nums[i];
-    }
-    int median = 0;
 
-    if ( self -> nums_count == 1)
-        median = self -> nums[0];
-    else if ( self -> nums_count == 2)
-        median = (self -> nums[0] + self -> nums[1])/2;
-    else{ 
-        for(int i = 0 ; i < 3 ; i ++)
-        {
-            if ((self -> nums [(i-1) % 3] <=  self -> nums [(i) % 3])
-                && (self -> nums [(i) % 3] <=  self -> nums [(i+1) % 3]))
-                {
-                    median = self -> nums [i];
-                    break;
-                }
-            if ((self -> nums [(i-1) % 3] >=  self -> nums [(i) % 3])
-                && (self -> nums [(i) % 3] >=  self -> nums [(i+1) % 3]))
-                {
-                    median = self -> nums [i];
-                    break;
-                }    
-        }
-    }   
-    char output[200];
-    snprintf(output,200,"Entered interger %d: sum = %d, median = %d \n",num,sum,median);
 
-    SCI_WRITE(&sci0,output);
-    
-    
-    
-   
-    
+void volume_control (Sound* self, int inc){
+	if(inc==1&&self->volumn<20)
+		self->volumn ++;
+	else if (inc==0&&self->volumn>1)
+		self->volumn --;
+}	
+void load_control (Bg_Loop* self, int inc){
+	if(inc==1){
+	//&&self->loop_number<8000)
+		self->loop_number += 500;
+		char loopmsg[100];
+		snprintf(loopmsg,100,"loop number is  %d \n",self->loop_number);
+		 SCI_WRITE(&sci0,loopmsg);
+	}
+	else if (inc==0&&self->loop_number>1000){
+		self->loop_number -= 500;	
+		char loopmsg[100];
+		snprintf(loopmsg,100,"loop number is  %d \n",self->loop_number);
+		 SCI_WRITE(&sci0,loopmsg);
+	}
+}	
+void mute (Sound* self){
+	if(self->volumn == 0){
+		self->volumn = self->prev_volumn;
+	}else{
+		self->prev_volumn = self->volumn;
+		self->volumn = 0;
+	}	
 }
+void startLoop(Bg_Loop* self,int arg){
+	for(int i=0;i<self->loop_number;i++){
+		
+	}
+	if(self->deadline_enabled){
+		SEND(USEC(1300),USEC(1300),self,startLoop,0);
+	}else{
+		AFTER(USEC(1300),self,startLoop,0);
+	}
+}
+/* 1kHZ : 500us  
+769HZ: 650us
+537HZ: 931us
+*/
+void gap(Sound*self, int arg){
+	self->gap = 1;
+}
+void play(Sound* self, int arg){
+    
+    self->flag = !self->flag;
+    if(self->gap){
+        *DAC_port = 0x00;
+    }else{
+        if(self->flag){
+            *DAC_port = self->volumn;
+        }else{
+            *DAC_port = 0x00;
+        }
+    }
+	
+    if(self->deadline_enabled){
+		SEND(USEC(self->period),USEC(self->period),self,play,0);
+	}else{
+    	AFTER(USEC(500),self,play,0);
+	}
+}
+void startSound(Sound* self, int arg){
+	self->gap=0;
+    self->period = periods[myIndex[self->note]+5]*1000000;
+    int tempo = beats[self->note];
+    self->note = (self->note+1)%32;
+    SEND(MSEC(tempo*self->bpm-50),MSEC(50),self,gap,0);
+    SEND(MSEC(tempo*self->bpm),MSEC(tempo*self->bpm),self,startSound,0);
+
+}
+
+
 void reader(App* self, int c)
 {
+     SCI_WRITE(&sci0, "Rcv: \'");
+     SCI_WRITECHAR(&sci0,c);
+     SCI_WRITE(&sci0, "\'\n");
+	 int num;
+	switch(c) {
+		case 'e':
+			
+			self->c[self->count] = '\0';
+			num = atoi(self->c);
+	   
+			self->count = 0;
+		   // print_key(num);
+		   break;
+		case 'q':
+			//volume_control(&generator,1);
+			ASYNC(&generator,volume_control,1);
+			break;
+		
+		case 'a':
+			//SCI_WRITE(&sci0, "Down is pressed");
+			//volume_control(&generator,0);
+			ASYNC(&generator,volume_control,0);
+			break;
+		case 'm':
+			//mute(&generator);
+			ASYNC(&generator,mute,0);
+			break;
+		case 'w':
+			//load_control(&load,1);
+			ASYNC(&load,load_control,1);
+			break;
+		case 's':
+			//load_control(&load,0);
+			ASYNC(&load,load_control,0);
+			break;
+		case 'd':
+			if(load.deadline_enabled==0){
+				load.deadline_enabled = 1;
+				generator.deadline_enabled = 1;
+				SCI_WRITE(&sci0, "Deadline is enabled \n");
+			}else{
+				load.deadline_enabled = 0;
+				generator.deadline_enabled = 0;
+				SCI_WRITE(&sci0, "Deadline is disabled \n");
+			}
+			break;
 
-    if(c == 'e') {
-        int num;
-        self->c[self->count] = '\0';
-        num = atoi(self->c);
-        
-        SCI_WRITE(&sci0, "Rcv: \'");
-        SCI_WRITE(&sci0, self->c);
-
-        SCI_WRITE(&sci0, "\'\n");
-        self->count = 0;
-        three_history(self,num);
-        
-    } else if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
+	}
+	if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
         self->c[self->count++] = c;
-    }
+	}
 }
-
 void startApp(App* self, int arg)
 {
     CANMsg msg;
@@ -116,6 +238,9 @@ void startApp(App* self, int arg)
     msg.buff[4] = 'o';
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
+	ASYNC(&generator,startSound,0);
+	ASYNC(&generator,play,0);
+
 }
 
 int main()
