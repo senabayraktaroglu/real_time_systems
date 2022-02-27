@@ -63,10 +63,15 @@ typedef struct {
 	int volumn;
 	int prev_volumn;
 	int  deadline_enabled;
+    int gap;
+    int note;
+    int bpm;
+	int key;
+    int period;
 }Sound;
 
 App app = { initObject(), 0, 'X', {0},0  };
-Sound generator = { initObject(), 0 , 5,0,1};
+Sound generator = { initObject(), 0 , 5,0,1,0,0,120,0,0};
 Bg_Loop load =  { initObject(), 1000,0};
 void reader(App*, int);
 void receiver(App*, int);
@@ -107,6 +112,22 @@ void load_control (Bg_Loop* self, int inc){
 		 SCI_WRITE(&sci0,loopmsg);
 	}
 }	
+void deadline_control_loop(Bg_Loop* self, int arg){
+	if(self->deadline_enabled==0){
+		self->deadline_enabled = 1;
+		SCI_WRITE(&sci0, "Deadline is enabled \n");
+	}else{
+		self->deadline_enabled = 0;
+		SCI_WRITE(&sci0, "Deadline is disabled \n");
+	}
+}
+void deadline_control_sound(Sound* self, int arg){
+	if(self->deadline_enabled==0){
+		self->deadline_enabled = 1;
+	}else{
+		self->deadline_enabled = 0;
+	}
+}
 void mute (Sound* self){
 	if(self->volumn == 0){
 		self->volumn = self->prev_volumn;
@@ -130,29 +151,53 @@ void startLoop(Bg_Loop* self,int arg){
 537HZ: 931us
 */
 void gap(Sound*self, int arg){
-	*DAC_port = 0x00;
-	AFTER(MSEC(50),self,startSound,0);
+	self->gap = 1;
 }
-void play(){
-
+void play(Sound* self, int arg){
+    
+    self->flag = !self->flag;
+    if(self->gap){
+        *DAC_port = 0x00;
+    }else{
+        if(self->flag){
+            *DAC_port = self->volumn;
+        }else{
+            *DAC_port = 0x00;
+        }
+    }
+	
+    if(self->deadline_enabled){
+		SEND(USEC(self->period),USEC(self->period),self,play,0);
+	}else{
+    	AFTER(USEC(self->period),self,play,0);
+	}
 }
 void startSound(Sound* self, int arg){
-	SEND(play,)
-    self->flag = !self->flag;
-	if(self->flag){
-		*DAC_port = self->volumn;
-	}else{
-		*DAC_port = 0x00;
-	}
-	if(self->deadline_enabled){
-		SEND(USEC(500),USEC(100),self,startSound,0);
-	}else{
-    	AFTER(USEC(500),self,startSound,0);
-	}
-	AFTER(MSEC(500),self,gap,1);
+	self->gap=0;
+	int offset = self->key + 5+5;
+    self->period = periods[myIndex[self->note]+offset]*1000000;
+    int tempo = beats[self->note];
+    self->note = (self->note+1)%32;
+    float interval = 60.0/(float)self->bpm;
+    SEND(MSEC(tempo*500*interval-50),MSEC(50),self,gap,0);
+    SEND(MSEC(tempo*500*interval),MSEC(tempo*self->bpm),self,startSound,0);
+
 }
 
-
+void change_key(Sound *self, int num){
+	if(num>=-5&&num<=5){
+		self->key = num;
+	}else{
+		SCI_WRITE(&sci0, "Invalid key! \n");
+	}
+}
+void change_bpm(Sound *self, int num){
+	if(num>0){
+		self->bpm = num;
+	}else{
+		SCI_WRITE(&sci0, "Invalid BPM! \n");
+	}
+}
 void reader(App* self, int c)
 {
      SCI_WRITE(&sci0, "Rcv: \'");
@@ -160,14 +205,25 @@ void reader(App* self, int c)
      SCI_WRITE(&sci0, "\'\n");
 	 int num;
 	switch(c) {
-		case 'e':
+		case 'k':
 			
 			self->c[self->count] = '\0';
 			num = atoi(self->c);
 	   
 			self->count = 0;
 		   // print_key(num);
+		   ASYNC(&generator,change_key,num);
 		   break;
+		case 'b':
+		
+		self->c[self->count] = '\0';
+		num = atoi(self->c);
+	
+		self->count = 0;
+		// print_key(num);
+		ASYNC(&generator,change_bpm,num);
+		break;
+
 		case 'q':
 			//volume_control(&generator,1);
 			ASYNC(&generator,volume_control,1);
@@ -191,15 +247,8 @@ void reader(App* self, int c)
 			ASYNC(&load,load_control,0);
 			break;
 		case 'd':
-			if(load.deadline_enabled==0){
-				load.deadline_enabled = 1;
-				generator.deadline_enabled = 1;
-				SCI_WRITE(&sci0, "Deadline is enabled \n");
-			}else{
-				load.deadline_enabled = 0;
-				generator.deadline_enabled = 0;
-				SCI_WRITE(&sci0, "Deadline is disabled \n");
-			}
+			ASYNC(&load,deadline_control_loop,0);
+			ASYNC(&generator,deadline_control_sound,0);
 			break;
 
 	}
@@ -226,7 +275,7 @@ void startApp(App* self, int arg)
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
 	ASYNC(&generator,startSound,0);
-//	ASYNC(&load,startLoop,0);
+	ASYNC(&generator,play,0);
 
 }
 
