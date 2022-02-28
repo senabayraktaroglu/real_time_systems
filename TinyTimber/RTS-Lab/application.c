@@ -49,9 +49,11 @@ typedef struct {
 */
 typedef struct {
     Object super;
-    int loop_number;
-	int  deadline_enabled;
-} Bg_Loop;
+    int play;
+	int key;
+	int note;
+    int bpm;
+} Controller;
 
 /* Application class for sound generator
 *  flag: whether to write 0 or 1 to the DAC port
@@ -61,25 +63,22 @@ typedef struct {
 */
 typedef struct {
     Object super;
+	int play;
 	int flag;
 	int volumn;
 	int prev_volumn;
 	int  deadline_enabled;
     int gap;
-    int note;
-    int bpm;
-	int key;
     int period;
-	int play;
 }Sound;
 
 App app = { initObject(), 0, 'X', {0},0,0 };
-Sound generator = { initObject(), 0 , 5,0,1,0,0,120,0,0,0};
-Bg_Loop load =  { initObject(), 1000,0};
+Sound generator = { initObject(), 1,0 , 5,0,1,0,0};
+Controller controller =  { initObject(),1,0,0,120};
 void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
-void startSound(Sound* , int);
+void startSound(Controller* , int);
 
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 
@@ -101,30 +100,7 @@ void volume_control (Sound* self, int inc){
 	else if (inc==0&&self->volumn>1)
 		self->volumn --;
 }	
-void load_control (Bg_Loop* self, int inc){
-	if(inc==1){
-	//&&self->loop_number<8000)
-		self->loop_number += 500;
-		char loopmsg[100];
-		snprintf(loopmsg,100,"loop number is  %d \n",self->loop_number);
-		 SCI_WRITE(&sci0,loopmsg);
-	}
-	else if (inc==0&&self->loop_number>1000){
-		self->loop_number -= 500;	
-		char loopmsg[100];
-		snprintf(loopmsg,100,"loop number is  %d \n",self->loop_number);
-		 SCI_WRITE(&sci0,loopmsg);
-	}
-}	
-void deadline_control_loop(Bg_Loop* self, int arg){
-	if(self->deadline_enabled==0){
-		self->deadline_enabled = 1;
-		SCI_WRITE(&sci0, "Deadline is enabled \n");
-	}else{
-		self->deadline_enabled = 0;
-		SCI_WRITE(&sci0, "Deadline is disabled \n");
-	}
-}
+
 void deadline_control_sound(Sound* self, int arg){
 	if(self->deadline_enabled==0){
 		self->deadline_enabled = 1;
@@ -140,16 +116,7 @@ void mute (Sound* self){
 		self->volumn = 0;
 	}	
 }
-void startLoop(Bg_Loop* self,int arg){
-	for(int i=0;i<self->loop_number;i++){
-		
-	}
-	if(self->deadline_enabled){
-		SEND(USEC(1300),USEC(1300),self,startLoop,0);
-	}else{
-		AFTER(USEC(1300),self,startLoop,0);
-	}
-}
+
 /* 1kHZ : 500us  
 769HZ: 650us
 537HZ: 931us
@@ -179,36 +146,50 @@ void play(Sound* self, int arg){
 		return ;
 	}  
 }
-void startSound(Sound* self, int arg){
+void change_period(Sound* self, int arg){
+	self->period = arg;
+}
+void reset_gap(Sound* self, int arg){
+	self->gap = 0;
+}
+
+void startSound(Controller* self, int arg){
 	if(self->play==0) return;
-	self->gap=0;
+	ASYNC(&generator,reset_gap,0);
 	int offset = self->key + 5+5;
-    self->period = periods[myIndex[self->note]+offset]*1000000;
+    int period = periods[myIndex[self->note]+offset]*1000000;
+	ASYNC(&generator,change_period,period);
     int tempo = beats[self->note];
     self->note = (self->note+1)%32;
+	
     float interval = 60.0/(float)self->bpm;
-    SEND(MSEC(tempo*500*interval-50),MSEC(50),self,gap,0);
+    SEND(MSEC(tempo*500*interval-50),MSEC(50),&generator,gap,0);
     SEND(MSEC(tempo*500*interval),MSEC(tempo*self->bpm),self,startSound,0);
 
 }
+
 void pause(Sound *self, int arg){
 	self->play = ! self->play;
 	if(self->play){
 		SCI_WRITE(&sci0, "Playing \n");
-		ASYNC(&generator,startSound,0);
-		ASYNC(self, play,0);
+		ASYNC(&controller,startSound,0);
+		ASYNC(&generator, play,0);
 	}else{
 		SCI_WRITE(&sci0, "Paused \n");
 	}
 }
-void change_key(Sound *self, int num){
+void pause_c(Controller *self, int arg){
+	self->play = ! self->play;
+}
+ 
+void change_key(Controller *self, int num){
 	if(num>=-5&&num<=5){
 		self->key = num;
 	}else{
 		SCI_WRITE(&sci0, "Invalid key! \n");
 	}
 }
-void change_bpm(Sound *self, int num){
+void change_bpm(Controller *self, int num){
 	if(num>0){
 		self->bpm = num;
 	}else{
@@ -247,7 +228,7 @@ void reader(App* self, int c)
 				self->count = 0;
 			// print_key(num);
 			
-				SYNC(&generator,change_key,num);
+				SYNC(&controller,change_key,num);
 			
 			break;
 			case 'b':
@@ -257,7 +238,7 @@ void reader(App* self, int c)
 			
 				self->count = 0;
 				// print_key(num);
-				SYNC(&generator,change_bpm,num);
+				SYNC(&controller,change_bpm,num);
 			break;
 
 			case 'q':
@@ -276,18 +257,19 @@ void reader(App* self, int c)
 				break;
 			case 'w':
 				//load_control(&load,1);
-				ASYNC(&load,load_control,1);
+				//ASYNC(&load,load_control,1);
 				break;
 			case 's':
 				//load_control(&load,0);
-				ASYNC(&load,load_control,0);
+				//ASYNC(&load,load_control,0);
 				break;
 			case 'd':
-				ASYNC(&load,deadline_control_loop,0);
 				ASYNC(&generator,deadline_control_sound,0);
 				break;
 			case 'p':
+			
 				SYNC(&generator,pause,0);
+				SYNC(&controller,pause_c,0);
 				break;
 		}
 		if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
@@ -314,7 +296,8 @@ void startApp(App* self, int arg)
     msg.buff[4] = 'o';
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
-
+	ASYNC(&controller,startSound,0);
+	ASYNC(&generator, play,0);
 }
 
 int main()
