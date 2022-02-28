@@ -39,6 +39,8 @@ typedef struct {
     char c[100];
     int nums[3];
     int nums_count ;
+	int mode;
+	//0 is master, 1 is slave
 } App;
 
 /* Application class for background loop
@@ -68,10 +70,11 @@ typedef struct {
     int bpm;
 	int key;
     int period;
+	int play;
 }Sound;
 
-App app = { initObject(), 0, 'X', {0},0  };
-Sound generator = { initObject(), 0 , 5,0,1,0,0,120,0,0};
+App app = { initObject(), 0, 'X', {0},0,0 };
+Sound generator = { initObject(), 0 , 5,0,1,0,0,120,0,0,0};
 Bg_Loop load =  { initObject(), 1000,0};
 void reader(App*, int);
 void receiver(App*, int);
@@ -88,6 +91,7 @@ void receiver(App* self, int unused)
     CAN_RECEIVE(&can0, &msg);
     SCI_WRITE(&sci0, "Can msg received: ");
     SCI_WRITE(&sci0, msg.buff);
+	SCI_WRITE(&sci0, "\n ");
 }
 
 
@@ -165,14 +169,18 @@ void play(Sound* self, int arg){
             *DAC_port = 0x00;
         }
     }
-	
-    if(self->deadline_enabled){
-		SEND(USEC(self->period),USEC(self->period),self,play,0);
+	if(self->play){
+		if(self->deadline_enabled){
+				SEND(USEC(self->period),USEC(self->period),self,play,0);
+			}else{
+				AFTER(USEC(self->period),self,play,0);
+			}
 	}else{
-    	AFTER(USEC(self->period),self,play,0);
-	}
+		return ;
+	}  
 }
 void startSound(Sound* self, int arg){
+	if(self->play==0) return;
 	self->gap=0;
 	int offset = self->key + 5+5;
     self->period = periods[myIndex[self->note]+offset]*1000000;
@@ -183,7 +191,16 @@ void startSound(Sound* self, int arg){
     SEND(MSEC(tempo*500*interval),MSEC(tempo*self->bpm),self,startSound,0);
 
 }
-
+void pause(Sound *self, int arg){
+	self->play = ! self->play;
+	if(self->play){
+		SCI_WRITE(&sci0, "Playing \n");
+		ASYNC(&generator,startSound,0);
+		ASYNC(self, play,0);
+	}else{
+		SCI_WRITE(&sci0, "Paused \n");
+	}
+}
 void change_key(Sound *self, int num){
 	if(num>=-5&&num<=5){
 		self->key = num;
@@ -204,58 +221,81 @@ void reader(App* self, int c)
      SCI_WRITECHAR(&sci0,c);
      SCI_WRITE(&sci0, "\'\n");
 	 int num;
-	switch(c) {
-		case 'k':
+	 if(c =='o'){
+			self->mode = !self->mode;
+			if(self->mode){
+				SCI_WRITE(&sci0, "In slave mode\n");
+			} else{
+				SCI_WRITE(&sci0, "In master mode\n");
+			}
+		}
+	if(self->mode){
+		CANMsg msg;
+		msg.msgId = 1;
+		msg.nodeId = 1;
+		msg.length = 6;
+		msg.buff[0] = c;
+
+		CAN_SEND(&can0, &msg);
+	}else{
+		switch(c) {
+			case 'k':
+				
+				self->c[self->count] = '\0';
+				num = atoi(self->c);
+		
+				self->count = 0;
+			// print_key(num);
 			
-			self->c[self->count] = '\0';
-			num = atoi(self->c);
-	   
-			self->count = 0;
-		   // print_key(num);
-		   ASYNC(&generator,change_key,num);
-		   break;
-		case 'b':
-		
-		self->c[self->count] = '\0';
-		num = atoi(self->c);
-	
-		self->count = 0;
-		// print_key(num);
-		ASYNC(&generator,change_bpm,num);
-		break;
-
-		case 'q':
-			//volume_control(&generator,1);
-			ASYNC(&generator,volume_control,1);
+				SYNC(&generator,change_key,num);
+			
 			break;
-		
-		case 'a':
-			//SCI_WRITE(&sci0, "Down is pressed");
-			//volume_control(&generator,0);
-			ASYNC(&generator,volume_control,0);
-			break;
-		case 'm':
-			//mute(&generator);
-			ASYNC(&generator,mute,0);
-			break;
-		case 'w':
-			//load_control(&load,1);
-			ASYNC(&load,load_control,1);
-			break;
-		case 's':
-			//load_control(&load,0);
-			ASYNC(&load,load_control,0);
-			break;
-		case 'd':
-			ASYNC(&load,deadline_control_loop,0);
-			ASYNC(&generator,deadline_control_sound,0);
+			case 'b':
+			
+				self->c[self->count] = '\0';
+				num = atoi(self->c);
+			
+				self->count = 0;
+				// print_key(num);
+				SYNC(&generator,change_bpm,num);
 			break;
 
-	}
-	if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
-        self->c[self->count++] = c;
+			case 'q':
+				//volume_control(&generator,1);
+				ASYNC(&generator,volume_control,1);
+				break;
+			
+			case 'a':
+				//SCI_WRITE(&sci0, "Down is pressed");
+				//volume_control(&generator,0);
+				ASYNC(&generator,volume_control,0);
+				break;
+			case 'm':
+				//mute(&generator);
+				ASYNC(&generator,mute,0);
+				break;
+			case 'w':
+				//load_control(&load,1);
+				ASYNC(&load,load_control,1);
+				break;
+			case 's':
+				//load_control(&load,0);
+				ASYNC(&load,load_control,0);
+				break;
+			case 'd':
+				ASYNC(&load,deadline_control_loop,0);
+				ASYNC(&generator,deadline_control_sound,0);
+				break;
+			case 'p':
+				SYNC(&generator,pause,0);
+				break;
+		}
+		if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
+			self->c[self->count++] = c;
+		}
 	}
 }
+
 void startApp(App* self, int arg)
 {
     CANMsg msg;
@@ -274,8 +314,6 @@ void startApp(App* self, int arg)
     msg.buff[4] = 'o';
     msg.buff[5] = 0;
     CAN_SEND(&can0, &msg);
-	ASYNC(&generator,startSound,0);
-	ASYNC(&generator,play,0);
 
 }
 

@@ -5,8 +5,8 @@
   <TabInfoArray Name="TabInfoArray">
     <TabInfo>
       <wxString Value="E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c" Name="FileName"/>
-      <int Value="169" Name="FirstVisibleLine"/>
-      <int Value="145" Name="CurrentLine"/>
+      <int Value="0" Name="FirstVisibleLine"/>
+      <int Value="194" Name="CurrentLine"/>
       <wxArrayString Name="Bookmarks"/>
       <IntVector Name="CollapsedFolds"/>
     </TabInfo>
