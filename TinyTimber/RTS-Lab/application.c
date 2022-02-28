@@ -79,18 +79,68 @@ void reader(App*, int);
 void receiver(App*, int);
 void three_history(App *,int);
 void startSound(Controller* , int);
-
+void mute (Sound* );
+void volume_control (Sound* , int );
+void pause(Sound *, int );
+void pause_c(Controller *, int );
+ 
+void change_key(Controller *, int );
+void change_bpm(Controller *, int );
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
 
 Can can0 = initCan(CAN_PORT0, &app, receiver);
 
+/*protocol
+ * msgId 1: inc the volumn
+ * msgId 2: dec the volumn
+ * msgId 3: mute
+ * msgId 4: pause
+ *  msgId 5: change the key msg.buff = new value (buffer size = 1)
+ * 		nodeId 1 negative nodeId 2 positive
+ *  msgId 6: change the bpm msg.buff = new value (buffer size = 3)
+ * 		
+ */
 void receiver(App* self, int unused)
 {
     CANMsg msg;
     CAN_RECEIVE(&can0, &msg);
     SCI_WRITE(&sci0, "Can msg received: ");
+	//SCI_WRITE(&sci0, msg.msgId);
+	//SCI_WRITE(&sci0, msg.nodeId);
     SCI_WRITE(&sci0, msg.buff);
 	SCI_WRITE(&sci0, "\n ");
+	int num = 0;
+	if(self->mode){
+			
+		switch(msg.msgId){
+			case 1: 
+				ASYNC(&generator,volume_control,1);
+				break;
+			case 2: 
+				ASYNC(&generator,volume_control,0);
+				break;
+			case 3: 
+				ASYNC(&generator,mute,0);
+				break;
+			case 4: 
+				SYNC(&generator,pause,0);
+				SYNC(&controller,pause_c,0);
+				break;
+			case 5:
+				//negative key
+				num = atoi(msg.buff);
+				if(msg.nodeId==1){
+					num = -num;
+				}
+				ASYNC(&controller,change_key,num);
+				break;
+			case 6:
+				num = atoi(msg.buff);
+				
+				ASYNC(&controller,change_bpm,num);
+				break;
+		}
+	}
 }
 
 
@@ -190,11 +240,53 @@ void change_key(Controller *self, int num){
 	}
 }
 void change_bpm(Controller *self, int num){
-	if(num>0){
+	if(num>=60&&num<=240){
 		self->bpm = num;
 	}else{
 		SCI_WRITE(&sci0, "Invalid BPM! \n");
 	}
+}
+/*protocol
+ * msgId 1: inc the volumn
+ * msgId 2: dec the volumn
+ * msgId 3: mute
+ * msgId 4: pause
+ *  msgId 5: change the key msg.buff = new value (buffer size = 1)
+ * 		nodeId 1 negative nodeId 2 positive
+ *  msgId 6: change the bpm msg.buff = new value (buffer size = 3)
+ * 		
+ */
+void send_key_msg(App* self,int num){
+   
+   CANMsg msg;
+   msg.msgId = 5;
+   if (num < 0){
+       msg.nodeId = 1;
+   }
+   else{
+       msg.nodeId = 2;
+   }
+   char str_num[1]; 
+   sprintf(str_num,"%d", abs(num));
+   msg.length = 1;
+   msg.buff[0] = str_num[0];
+   //msg.buff[1] = 0;
+   CAN_SEND(&can0, &msg);
+}
+
+
+void send_bpm_msg(App* self, int num){
+    CANMsg msg;
+    char str_num[3]; 
+    sprintf(str_num,"%d", num);
+    msg.msgId = 6;
+    msg.nodeId = 1;
+    msg.length = 3;
+    msg.buff[0] = str_num[0];
+    msg.buff[1] = str_num[1];
+	if(num>99)
+		msg.buff[2] = str_num[2];
+    CAN_SEND(&can0, &msg);
 }
 void reader(App* self, int c)
 {
@@ -202,6 +294,7 @@ void reader(App* self, int c)
      SCI_WRITECHAR(&sci0,c);
      SCI_WRITE(&sci0, "\'\n");
 	 int num;
+	 CANMsg msg;
 	 if(c =='o'){
 			self->mode = !self->mode;
 			if(self->mode){
@@ -209,73 +302,93 @@ void reader(App* self, int c)
 			} else{
 				SCI_WRITE(&sci0, "In master mode\n");
 			}
-		}
-	if(self->mode){
-		CANMsg msg;
-		msg.msgId = 1;
-		msg.nodeId = 1;
-		msg.length = 6;
-		msg.buff[0] = c;
-
-		CAN_SEND(&can0, &msg);
-	}else{
-		switch(c) {
-			case 'k':
-				
-				self->c[self->count] = '\0';
-				num = atoi(self->c);
+	}
+	
+	switch(c) {
+		case 'k':
+			
+			self->c[self->count] = '\0';
+			num = atoi(self->c);
+	
+			self->count = 0;
+		// print_key(num);
+			if(!self->mode){
+				ASYNC(&controller,change_key,num);
+			}
+			ASYNC(self,send_key_msg,num);
+		break;
+		case 'b':
 		
-				self->count = 0;
+			self->c[self->count] = '\0';
+			num = atoi(self->c);
+		
+			self->count = 0;
 			// print_key(num);
-			
-				SYNC(&controller,change_key,num);
-			
-			break;
-			case 'b':
-			
-				self->c[self->count] = '\0';
-				num = atoi(self->c);
-			
-				self->count = 0;
-				// print_key(num);
-				SYNC(&controller,change_bpm,num);
-			break;
+			if(!self->mode)
+				ASYNC(&controller,change_bpm,num);
+		
+			ASYNC(self,send_bpm_msg,num);
+		break;
 
-			case 'q':
-				//volume_control(&generator,1);
+		case 'q':
+			//volume_control(&generator,1);
+			if(!self->mode)
 				ASYNC(&generator,volume_control,1);
-				break;
+
 			
-			case 'a':
-				//SCI_WRITE(&sci0, "Down is pressed");
-				//volume_control(&generator,0);
+			msg.msgId = 1;
+			msg.nodeId = 0;
+			msg.length = 0;
+			CAN_SEND(&can0, &msg);
+
+			break;
+		
+		case 'a':
+			//SCI_WRITE(&sci0, "Down is pressed");
+			//volume_control(&generator,0);
+			if(!self->mode)
 				ASYNC(&generator,volume_control,0);
-				break;
-			case 'm':
-				//mute(&generator);
-				ASYNC(&generator,mute,0);
-				break;
-			case 'w':
-				//load_control(&load,1);
-				//ASYNC(&load,load_control,1);
-				break;
-			case 's':
-				//load_control(&load,0);
-				//ASYNC(&load,load_control,0);
-				break;
-			case 'd':
-				ASYNC(&generator,deadline_control_sound,0);
-				break;
-			case 'p':
+		
 			
+			msg.msgId = 2;
+			msg.nodeId = 0;
+			msg.length = 0;
+			CAN_SEND(&can0, &msg);
+			
+			break;
+		case 'm':
+			//mute(&generator);
+			if(!self->mode)
+				ASYNC(&generator,mute,0);
+		
+			
+			msg.msgId = 3;
+			msg.nodeId = 0;
+			msg.length = 0;
+			CAN_SEND(&can0, &msg);
+			
+			
+			break;
+		case 'd':
+			ASYNC(&generator,deadline_control_sound,0);
+			break;
+		case 'p':
+			if(!self->mode){
 				SYNC(&generator,pause,0);
 				SYNC(&controller,pause_c,0);
-				break;
-		}
-		if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
-			self->c[self->count++] = c;
-		}
+			}
+			
+			msg.msgId = 4;
+			msg.nodeId = 0;
+			msg.length = 0;
+			CAN_SEND(&can0, &msg);
+			
+			break;
 	}
+	if ((c >='0'&&c<='9') || (self->count==0 && c == '-')){
+		self->c[self->count++] = c;
+	}
+	
 }
 
 void startApp(App* self, int arg)
