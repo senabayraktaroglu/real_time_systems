@@ -1,33 +1,8 @@
 
-/*
-User guide:
- 
- Compile and upload the .s19 file to the experiment board, type "go" to start the execution.
- 
- VOLUME CONTROL
- 
- - For increasing volume press "q"
- - For decreasing press "a"
- 
- MUTE CONTROL
- 
- - For mute and unmute press "m"
- 
- LOAD CONTROL
- 
- - For increasing background load press "w"
- - For decreasing background load press "s"
- 
- DEADLINE CONTROL
-  
- - For enable and disable deadline press "d"
- 
- */
-
-
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
+#include "sioTinyTimber.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "periods.h"
@@ -37,16 +12,16 @@ typedef struct {
     Object super;
     int count;
     char c[100];
-    int nums[3];
+    Time nums[3];
     int nums_count ;
 	int mode;
 	//0 is master, 1 is slave
+	int press_mode;
+	Timer timer;
+	int bounce;
+	int momentary;
 } App;
 
-/* Application class for background loop
-*  loop number: number of iterations for the empty loop
-* deadline_enabled: the deadline enabled state, 0 for false(disabled) 1 for true(enabled)
-*/
 typedef struct {
     Object super;
     int play;
@@ -72,12 +47,13 @@ typedef struct {
     int period;
 }Sound;
 
-App app = { initObject(), 0, 'X', {0},0,0 };
-Sound generator = { initObject(), 1,0 , 5,0,1,0,0};
-Controller controller =  { initObject(),1,0,0,120};
+App app = { initObject(), 0, 'X', {0},0,0,0,initTimer(),0,0 };
+Sound generator = { initObject(), 0,0 , 5,0,1,0,0};
+Controller controller =  { initObject(),0,0,0,120};
 void reader(App*, int);
 void receiver(App*, int);
-void three_history(App *,int);
+void user_call_back(App*, int);
+void three_history(App *,Time);
 void startSound(Controller* , int);
 void mute (Sound* );
 void volume_control (Sound* , int );
@@ -87,7 +63,7 @@ void pause_c(Controller *, int );
 void change_key(Controller *, int );
 void change_bpm(Controller *, int );
 Serial sci0 = initSerial(SCI_PORT0, &app, reader);
-
+SysIO sio0 = initSysIO(SIO_PORT0, &app,user_call_back);
 Can can0 = initCan(CAN_PORT0, &app, receiver);
 
 /*protocol
@@ -100,6 +76,104 @@ Can can0 = initCan(CAN_PORT0, &app, receiver);
  *  msgId 6: change the bpm msg.buff = new value (buffer size = 3)
  * 		
  */
+void reset_bpm(App *self, int unused){
+	int state = SIO_READ(&sio0);
+	//press state: 1 for released, 0 for pressed
+	if(state==0){
+		SCI_WRITE(&sci0,"Reset bpm to 120\n");
+		SYNC(&controller,change_bpm,120);
+	}
+}
+
+void check_momentary(App *self, int unused){
+	int state = SIO_READ(&sio0);
+	//press state: 1 for released, 0 for pressed
+	if(state==1){
+		self->momentary = 1;
+	}
+}
+
+void check_hold(App *self, int unused){
+	int state = SIO_READ(&sio0);
+	//press state: 1 for released, 0 for pressed
+	if(state==0){
+		self->press_mode = 1;
+		SIO_TRIG(&sio0,1);
+		SCI_WRITE(&sci0,"Entered press-hold mode\n");
+	}
+	SEND(SEC(1),MSEC(1),self,reset_bpm,0);
+}
+void three_history(App *self,Time num){
+    Time sum = 0;
+    
+    if ( self -> nums_count < 3){
+       self -> nums[self->nums_count] = num;
+       self -> nums_count ++;
+       
+    }else{
+        self-> nums[0] = num;
+        //made swap if more than 3 elements added
+        Time temp = 0;
+        temp = self -> nums[0];
+        self-> nums[0] = self -> nums[1];
+        self -> nums[1] = self -> nums[2];
+        self -> nums[2] = temp;
+    }
+	//check if differenca is smaller than 100msec
+	if(self->nums_count==3){
+		if(abs(self->nums[0]-self->nums[1])<MSEC(100) &&
+		abs(self->nums[0]-self->nums[2])<MSEC(100) &&
+		abs(self->nums[2]-self->nums[1])<MSEC(100) ){
+			//calculate avg,change bpm
+			Time avg = (self->nums[0]+self->nums[1]+self->nums[2])/3;
+			float new_time = SEC_OF(avg) + (float)(MSEC_OF(avg))/1000.0;
+			int new_bpm = (int)60.0/new_time;
+			 char output[200];
+   			 snprintf(output,200,"New bpm is %d\n", new_bpm);
+    		SCI_WRITE(&sci0,output);
+			SYNC(&controller,change_bpm,new_bpm);
+		}else{
+			//do nothing
+		}
+	}
+
+}
+
+ void user_call_back(App *self, int unused){
+	SCI_WRITE(&sci0, "User button is pressed \n");
+	//get time
+	Time diff =T_SAMPLE(&self->timer);
+	//Time diff = now - self->previous_time;
+	
+	if(diff<MSEC(100)){
+		SCI_WRITE(&sci0,"bounce \n");
+		return ;
+	}
+	
+	long usec = USEC_OF(diff);
+	long msec = MSEC_OF(diff);
+	long sec = SEC_OF(diff);
+	char WCET[200];
+	if(self->press_mode==1){
+	
+		snprintf(WCET,200,"Hold time is %ld sec, %ld msec, %ld usec  \n",sec,msec,usec);
+		SIO_TRIG(&sio0,0);
+		self->press_mode = 0;
+	}else{		
+		snprintf(WCET,200,"Momentary press interval is %ld sec, %ld msec, %ld usec  \n",sec,msec,usec);
+		ASYNC(self,three_history,diff);
+	}
+	SCI_WRITE(&sci0,WCET);
+	T_RESET(&self->timer);
+	
+	SEND(MSEC(400),MSEC(50),self,check_momentary,0);
+	if(self->momentary) {
+		self->momentary = 0;
+		return;
+	}
+	SEND(SEC(1),MSEC(50),self,check_hold,0);
+
+ }
 void receiver(App* self, int unused)
 {
     CANMsg msg;
@@ -132,12 +206,12 @@ void receiver(App* self, int unused)
 				if(msg.nodeId==1){
 					num = -num;
 				}
-				ASYNC(&controller,change_key,num);
+				SYNC(&controller,change_key,num);
 				break;
 			case 6:
 				num = atoi(msg.buff);
 				
-				ASYNC(&controller,change_bpm,num);
+				SYNC(&controller,change_bpm,num);
 				break;
 		}
 	}
@@ -202,17 +276,22 @@ void change_period(Sound* self, int arg){
 void reset_gap(Sound* self, int arg){
 	self->gap = 0;
 }
-
+void toggle_led(Controller* self, int arg){
+	SIO_TOGGLE(&sio0);
+}
 void startSound(Controller* self, int arg){
 	if(self->play==0) return;
 	ASYNC(&generator,reset_gap,0);
+	
 	int offset = self->key + 5+5;
     int period = periods[myIndex[self->note]+offset]*1000000;
-	ASYNC(&generator,change_period,period);
+	SYNC(&generator,change_period,period);
+	ASYNC(self, toggle_led,0);
     int tempo = beats[self->note];
     self->note = (self->note+1)%32;
 	
     float interval = 60.0/(float)self->bpm;
+	SEND(MSEC(tempo*250*interval),MSEC(tempo*self->bpm),self,toggle_led,0);
     SEND(MSEC(tempo*500*interval-50),MSEC(50),&generator,gap,0);
     SEND(MSEC(tempo*500*interval),MSEC(tempo*self->bpm),self,startSound,0);
 
@@ -224,8 +303,10 @@ void pause(Sound *self, int arg){
 		SCI_WRITE(&sci0, "Playing \n");
 		ASYNC(&controller,startSound,0);
 		ASYNC(&generator, play,0);
+		SIO_WRITE(&sio0,1);
 	}else{
 		SCI_WRITE(&sci0, "Paused \n");
+		SIO_WRITE(&sio0,0);
 	}
 }
 void pause_c(Controller *self, int arg){
@@ -240,7 +321,7 @@ void change_key(Controller *self, int num){
 	}
 }
 void change_bpm(Controller *self, int num){
-	if(num>=60&&num<=240){
+	if(num>=30&&num<=300){
 		self->bpm = num;
 	}else{
 		SCI_WRITE(&sci0, "Invalid BPM! \n");
@@ -397,6 +478,11 @@ void startApp(App* self, int arg)
 
     CAN_INIT(&can0);
     SCI_INIT(&sci0);
+	SIO_INIT(&sio0);
+	//configure it to call call-back when button is released
+	//SIO_TRIG(&sio0,1);
+	T_RESET(&self->timer);
+	SIO_WRITE(&sio0,0);
     SCI_WRITE(&sci0, "Hello, hello...\n");
 
     msg.msgId = 1;
@@ -417,6 +503,7 @@ int main()
 {
     INSTALL(&sci0, sci_interrupt, SCI_IRQ0);
     INSTALL(&can0, can_interrupt, CAN_IRQ0);
+	INSTALL(&sio0,sio_interrupt, SIO_IRQ0);
     TINYTIMBER(&app, startApp, 0);
     return 0;
 }

@@ -1,48 +1,7 @@
-DAC_port	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^#define DAC_port ((volatile unsigned char*) 0x4000741C)$/;"	macro	line:35
-super	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    Object super;$/;"	member	line:37	struct:__anon1	access:public
-count	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int count;$/;"	member	line:38	struct:__anon1	access:public
-c	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    char c[100];$/;"	member	line:39	struct:__anon1	access:public
-nums	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int nums[3];$/;"	member	line:40	struct:__anon1	access:public
-nums_count	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int nums_count ;$/;"	member	line:41	struct:__anon1	access:public
-App	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^typedef struct {     Object super;     int count;     char c[100];     int nums[3];     int nums_count ; } App; $/;"	typedef	line:42	typeref:struct:__anon1
-super	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    Object super;$/;"	member	line:49	struct:__anon2	access:public
-loop_number	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int loop_number;$/;"	member	line:50	struct:__anon2	access:public
-deadline_enabled	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int  deadline_enabled;$/;"	member	line:51	struct:__anon2	access:public
-Bg_Loop	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^typedef struct {     Object super;     int loop_number; 	int  deadline_enabled; } Bg_Loop; $/;"	typedef	line:52	typeref:struct:__anon2
-super	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    Object super;$/;"	member	line:61	struct:__anon3	access:public
-flag	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int flag;$/;"	member	line:62	struct:__anon3	access:public
-volumn	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int volumn;$/;"	member	line:63	struct:__anon3	access:public
-prev_volumn	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int prev_volumn;$/;"	member	line:64	struct:__anon3	access:public
-deadline_enabled	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int  deadline_enabled;$/;"	member	line:65	struct:__anon3	access:public
-gap	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int gap;$/;"	member	line:66	struct:__anon3	access:public
-note	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int note;$/;"	member	line:67	struct:__anon3	access:public
-bpm	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int bpm;$/;"	member	line:68	struct:__anon3	access:public
-key	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int key;$/;"	member	line:69	struct:__anon3	access:public
-period	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^    int period;$/;"	member	line:70	struct:__anon3	access:public
-play	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^	int play;$/;"	member	line:71	struct:__anon3	access:public
-Sound	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^typedef struct {     Object super; 	int flag; 	int volumn; 	int prev_volumn; 	int  deadline_enabled;     int gap;     int note;     int bpm; 	int key;     int period; 	int play; }Sound; $/;"	typedef	line:72	typeref:struct:__anon3
-app	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^App app = { initObject(), 0, 'X', {0},0  };$/;"	variable	line:74
-generator	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^Sound generator = { initObject(), 0 , 5,0,1,0,0,120,0,0,0};$/;"	variable	line:75
-load	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^Bg_Loop load =  { initObject(), 1000,0};$/;"	variable	line:76
-reader	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void reader(App*, int);$/;"	prototype	line:77	signature:(App*, int)	returns:void 
-receiver	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void receiver(App*, int);$/;"	prototype	line:78	signature:(App*, int)	returns:void 
-three_history	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void three_history(App *,int);$/;"	prototype	line:79	signature:(App *,int)	returns:void 
-startSound	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void startSound(Sound* , int);$/;"	prototype	line:80	signature:(Sound* , int)	returns:void 
-sci0	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^Serial sci0 = initSerial(SCI_PORT0, &app, reader);$/;"	variable	line:82
-can0	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^Can can0 = initCan(CAN_PORT0, &app, receiver);$/;"	variable	line:84
-receiver	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void receiver(App* self, int unused)$/;"	function	line:86	signature:(App* self, int unused)	returns:void 
-volume_control	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void volume_control (Sound* self, int inc){$/;"	function	line:95	signature:(Sound* self, int inc)	returns:void 
-load_control	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void load_control (Bg_Loop* self, int inc){$/;"	function	line:101	signature:(Bg_Loop* self, int inc)	returns:void 
-deadline_control_loop	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void deadline_control_loop(Bg_Loop* self, int arg){$/;"	function	line:116	signature:(Bg_Loop* self, int arg)	returns:void 
-deadline_control_sound	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void deadline_control_sound(Sound* self, int arg){$/;"	function	line:125	signature:(Sound* self, int arg)	returns:void 
-mute	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void mute (Sound* self){$/;"	function	line:132	signature:(Sound* self)	returns:void 
-startLoop	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void startLoop(Bg_Loop* self,int arg){$/;"	function	line:140	signature:(Bg_Loop* self,int arg)	returns:void 
-gap	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void gap(Sound*self, int arg){$/;"	function	line:154	signature:(Sound*self, int arg)	returns:void 
-play	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void play(Sound* self, int arg){$/;"	function	line:157	signature:(Sound* self, int arg)	returns:void 
-startSound	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void startSound(Sound* self, int arg){$/;"	function	line:179	signature:(Sound* self, int arg)	returns:void 
-pause	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void pause(Sound *self, int arg){$/;"	function	line:190	signature:(Sound *self, int arg)	returns:void 
-change_key	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void change_key(Sound *self, int num){$/;"	function	line:198	signature:(Sound *self, int num)	returns:void 
-change_bpm	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void change_bpm(Sound *self, int num){$/;"	function	line:205	signature:(Sound *self, int num)	returns:void 
-reader	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void reader(App* self, int c)$/;"	function	line:212	signature:(App* self, int c)	returns:void 
-startApp	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^void startApp(App* self, int arg)$/;"	function	line:270	signature:(App* self, int arg)	returns:void 
-main	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\application.c	/^int main()$/;"	function	line:293	returns:int 
+sio_init	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^void sio_init(SysIO *self, int unused) {$/;"	function	line:4	signature:(SysIO *self, int unused)	returns:void 
+sio_read	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^int sio_read(SysIO *self, int unused) {$/;"	function	line:12	signature:(SysIO *self, int unused)	returns:int 
+sio_write	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^void sio_write(SysIO *self, int val) {$/;"	function	line:16	signature:(SysIO *self, int val)	returns:void 
+sio_toggle	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^void sio_toggle(SysIO *self, int unused) {$/;"	function	line:20	signature:(SysIO *self, int unused)	returns:void 
+sio_trig	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^void sio_trig(SysIO *self, int rise) {$/;"	function	line:24	signature:(SysIO *self, int rise)	returns:void 
+DUMP	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^void DUMP(char *s);$/;"	prototype	line:35	signature:(char *s)	returns:void 
+sio_interrupt	E:\OPENME\RealTimeSystems\real_time_systems\TinyTimber\RTS-Lab\sioTinyTimber.c	/^int sio_interrupt(SysIO *self, int unused) {$/;"	function	line:37	signature:(SysIO *self, int unused)	returns:int 
