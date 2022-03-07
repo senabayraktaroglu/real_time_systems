@@ -20,6 +20,10 @@ typedef struct {
 	Timer timer;
 	int bounce;
 	int momentary;
+	Time previous_time;
+	int trigmode;
+	int inteval;
+	
 } App;
 
 typedef struct {
@@ -28,6 +32,7 @@ typedef struct {
 	int key;
 	int note;
     int bpm;
+	int change_bpm_flag;
 } Controller;
 
 /* Application class for sound generator
@@ -47,9 +52,9 @@ typedef struct {
     int period;
 }Sound;
 
-App app = { initObject(), 0, 'X', {0},0,0,0,initTimer(),0,0 };
+App app = { initObject(), 0, 'X', {0},0,0,0,initTimer(),0,0,0,0,0 };
 Sound generator = { initObject(), 0,0 , 5,0,1,0,0};
-Controller controller =  { initObject(),0,0,0,120};
+Controller controller =  { initObject(),0,0,0,120,0};
 void reader(App*, int);
 void receiver(App*, int);
 void user_call_back(App*, int);
@@ -76,15 +81,8 @@ Can can0 = initCan(CAN_PORT0, &app, receiver);
  *  msgId 6: change the bpm msg.buff = new value (buffer size = 3)
  * 		
  */
-void reset_bpm(App *self, int unused){
-	int state = SIO_READ(&sio0);
-	//press state: 1 for released, 0 for pressed
-	if(state==0){
-		SCI_WRITE(&sci0,"Reset bpm to 120\n");
-		SYNC(&controller,change_bpm,120);
-	}
-}
 
+/*
 void check_momentary(App *self, int unused){
 	int state = SIO_READ(&sio0);
 	//press state: 1 for released, 0 for pressed
@@ -92,17 +90,17 @@ void check_momentary(App *self, int unused){
 		self->momentary = 1;
 	}
 }
-
+ */
 void check_hold(App *self, int unused){
 	int state = SIO_READ(&sio0);
+	Time now = T_SAMPLE(&self->timer) ;
+	if((now-self->previous_time)>=SEC(1)&&(state==0))
 	//press state: 1 for released, 0 for pressed
-	if(state==0){
-		self->press_mode = 1;
-		SIO_TRIG(&sio0,1);
 		SCI_WRITE(&sci0,"Entered press-hold mode\n");
-	}
-	SEND(SEC(1),MSEC(1),self,reset_bpm,0);
+
+	
 }
+
 void three_history(App *self,Time num){
     Time sum = 0;
     
@@ -131,6 +129,7 @@ void three_history(App *self,Time num){
 			 char output[200];
    			 snprintf(output,200,"New bpm is %d\n", new_bpm);
     		SCI_WRITE(&sci0,output);
+			
 			SYNC(&controller,change_bpm,new_bpm);
 		}else{
 			//do nothing
@@ -138,9 +137,59 @@ void three_history(App *self,Time num){
 	}
 
 }
-
+void user_call_back(App *self, int unused){
+	
+	if(self->trigmode == 0){
+		Time start =T_SAMPLE(&self->timer);
+		Time inteval = start - self->previous_time;
+		self->inteval = inteval;
+		self->previous_time = start;
+		self->trigmode = 1;
+		SIO_TRIG(&sio0,1);
+		SEND(SEC(1),MSEC(50),self,check_hold,0);
+	}else{
+		Time end =T_SAMPLE(&self->timer);
+		Time diff = end - self->previous_time;
+		
+		if(diff<SEC(1)){
+			
+			diff = self->inteval;
+			if(diff<MSEC(100)){
+				SCI_WRITE(&sci0,"bounce \n");
+				self->trigmode = 0;
+				SIO_TRIG(&sio0,0);
+				return ;
+			}
+			long usec = USEC_OF(diff);
+			long msec = MSEC_OF(diff);
+			long sec = SEC_OF(diff);
+			char WCET[200];
+			snprintf(WCET,200,"Momentary press interval is %ld sec, %ld msec, %ld usec  \n",sec,msec,usec);
+			ASYNC(self,three_history,diff);
+			SCI_WRITE(&sci0,WCET);
+		}else{
+			
+			long usec = USEC_OF(diff);
+			long msec = MSEC_OF(diff);
+			long sec = SEC_OF(diff);
+			char WCET[200];
+			snprintf(WCET,200,"Hold time is %ld sec, %ld msec, %ld usec  \n",sec,msec,usec);
+			SCI_WRITE(&sci0,WCET);
+			if(diff>SEC(2)){
+				SCI_WRITE(&sci0,"Reset bpm to 120\n");
+				int bpm = 120;
+				SYNC(&controller,change_bpm,bpm);
+			}
+			//T_RESET(&self->timer);
+		}
+		self->trigmode = 0;
+		SIO_TRIG(&sio0,0);
+		
+	}
+}
+/*
  void user_call_back(App *self, int unused){
-	SCI_WRITE(&sci0, "User button is pressed \n");
+	//SCI_WRITE(&sci0, "User button is pressed \n");
 	//get time
 	Time diff =T_SAMPLE(&self->timer);
 	//Time diff = now - self->previous_time;
@@ -167,13 +216,14 @@ void three_history(App *self,Time num){
 	T_RESET(&self->timer);
 	
 	SEND(MSEC(400),MSEC(50),self,check_momentary,0);
-	if(self->momentary) {
+	if(!self->momentary){
+		SEND(SEC(1),MSEC(50),self,check_hold,0);
 		self->momentary = 0;
-		return;
 	}
-	SEND(SEC(1),MSEC(50),self,check_hold,0);
+	
 
  }
+  */
 void receiver(App* self, int unused)
 {
     CANMsg msg;
@@ -276,33 +326,41 @@ void change_period(Sound* self, int arg){
 void reset_gap(Sound* self, int arg){
 	self->gap = 0;
 }
-void toggle_led(Controller* self, int arg){
-	SIO_TOGGLE(&sio0);
-}
+
 void startSound(Controller* self, int arg){
 	if(self->play==0) return;
-	ASYNC(&generator,reset_gap,0);
+	
+	SYNC(&generator,reset_gap,0);
 	
 	int offset = self->key + 5+5;
     int period = periods[myIndex[self->note]+offset]*1000000;
 	SYNC(&generator,change_period,period);
-	ASYNC(self, toggle_led,0);
+	
     int tempo = beats[self->note];
+	if(tempo>2) SIO_WRITE(&sio0,0);
     self->note = (self->note+1)%32;
 	
     float interval = 60.0/(float)self->bpm;
-	SEND(MSEC(tempo*250*interval),MSEC(tempo*self->bpm),self,toggle_led,0);
+	
     SEND(MSEC(tempo*500*interval-50),MSEC(50),&generator,gap,0);
-    SEND(MSEC(tempo*500*interval),MSEC(tempo*self->bpm),self,startSound,0);
+    SEND(MSEC(tempo*500*interval),MSEC(tempo*250*interval),self,startSound,0);
 
 }
-
+void toggle_led(Controller* self, int arg){
+	if(self->play ==0) return;
+	SIO_TOGGLE(&sio0);
+	
+	float interval = 60.0/(float)self->bpm;
+	SEND(MSEC(500*interval),MSEC(250*interval),self,toggle_led,0);
+}
 void pause(Sound *self, int arg){
 	self->play = ! self->play;
+	//ASYNC(&controller,toggle_led,0);
 	if(self->play){
 		SCI_WRITE(&sci0, "Playing \n");
 		ASYNC(&controller,startSound,0);
 		ASYNC(&generator, play,0);
+		
 		SIO_WRITE(&sio0,1);
 	}else{
 		SCI_WRITE(&sci0, "Paused \n");
@@ -321,11 +379,14 @@ void change_key(Controller *self, int num){
 	}
 }
 void change_bpm(Controller *self, int num){
+	
 	if(num>=30&&num<=300){
 		self->bpm = num;
 	}else{
 		SCI_WRITE(&sci0, "Invalid BPM! \n");
 	}
+	
+	ASYNC(&controller,toggle_led,0);
 }
 /*protocol
  * msgId 1: inc the volumn
@@ -394,7 +455,7 @@ void reader(App* self, int c)
 			self->count = 0;
 		// print_key(num);
 			if(!self->mode){
-				ASYNC(&controller,change_key,num);
+				SYNC(&controller,change_key,num);
 			}
 			ASYNC(self,send_key_msg,num);
 		break;
@@ -405,8 +466,10 @@ void reader(App* self, int c)
 		
 			self->count = 0;
 			// print_key(num);
-			if(!self->mode)
-				ASYNC(&controller,change_bpm,num);
+			if(!self->mode){
+				SYNC(&controller,change_bpm,num);
+			}
+				
 		
 			ASYNC(self,send_bpm_msg,num);
 		break;
