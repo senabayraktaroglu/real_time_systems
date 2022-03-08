@@ -1,4 +1,6 @@
+/*User Guide
 
+*/
 #include "TinyTimber.h"
 #include "sciTinyTimber.h"
 #include "canTinyTimber.h"
@@ -187,43 +189,7 @@ void user_call_back(App *self, int unused){
 		
 	}
 }
-/*
- void user_call_back(App *self, int unused){
-	//SCI_WRITE(&sci0, "User button is pressed \n");
-	//get time
-	Time diff =T_SAMPLE(&self->timer);
-	//Time diff = now - self->previous_time;
-	
-	if(diff<MSEC(100)){
-		SCI_WRITE(&sci0,"bounce \n");
-		return ;
-	}
-	
-	long usec = USEC_OF(diff);
-	long msec = MSEC_OF(diff);
-	long sec = SEC_OF(diff);
-	char WCET[200];
-	if(self->press_mode==1){
-	
-		snprintf(WCET,200,"Hold time is %ld sec, %ld msec, %ld usec  \n",sec,msec,usec);
-		SIO_TRIG(&sio0,0);
-		self->press_mode = 0;
-	}else{		
-		snprintf(WCET,200,"Momentary press interval is %ld sec, %ld msec, %ld usec  \n",sec,msec,usec);
-		ASYNC(self,three_history,diff);
-	}
-	SCI_WRITE(&sci0,WCET);
-	T_RESET(&self->timer);
-	
-	SEND(MSEC(400),MSEC(50),self,check_momentary,0);
-	if(!self->momentary){
-		SEND(SEC(1),MSEC(50),self,check_hold,0);
-		self->momentary = 0;
-	}
-	
 
- }
-  */
 void receiver(App* self, int unused)
 {
     CANMsg msg;
@@ -326,7 +292,13 @@ void change_period(Sound* self, int arg){
 void reset_gap(Sound* self, int arg){
 	self->gap = 0;
 }
-
+void toggle_led(Controller* self, int arg){
+	if(self->play ==0 || self->bpm!=arg) return;
+	SIO_TOGGLE(&sio0);
+	
+	float interval = 60.0/(float)self->bpm;
+	SEND(MSEC(500*interval),MSEC(250*interval),self,toggle_led,self->bpm);
+}
 void startSound(Controller* self, int arg){
 	if(self->play==0) return;
 	
@@ -337,30 +309,27 @@ void startSound(Controller* self, int arg){
 	SYNC(&generator,change_period,period);
 	
     int tempo = beats[self->note];
-	if(tempo>2) SIO_WRITE(&sio0,0);
-    self->note = (self->note+1)%32;
+//	if(tempo>=2) SIO_WRITE(&sio0,0);
+   
 	
     float interval = 60.0/(float)self->bpm;
-	
+	if(self->bpm!=arg) {
+		if(self->note==15||self->note ==17||self->note ==21||self->note ==23) SIO_WRITE(&sio0,1);
+		else  SIO_WRITE(&sio0,0);
+		AFTER(MSEC(500*interval),&controller,toggle_led,self->bpm);
+	}
+	 self->note = (self->note+1)%32;
     SEND(MSEC(tempo*500*interval-50),MSEC(50),&generator,gap,0);
-    SEND(MSEC(tempo*500*interval),MSEC(tempo*250*interval),self,startSound,0);
+    SEND(MSEC(tempo*500*interval),MSEC(tempo*250*interval),self,startSound,self->bpm);
 
 }
-void toggle_led(Controller* self, int arg){
-	if(self->play ==0) return;
-	SIO_TOGGLE(&sio0);
-	
-	float interval = 60.0/(float)self->bpm;
-	SEND(MSEC(500*interval),MSEC(250*interval),self,toggle_led,0);
-}
+
 void pause(Sound *self, int arg){
 	self->play = ! self->play;
-	//ASYNC(&controller,toggle_led,0);
 	if(self->play){
 		SCI_WRITE(&sci0, "Playing \n");
-		ASYNC(&controller,startSound,0);
-		ASYNC(&generator, play,0);
 		
+		ASYNC(&generator, play,0);
 		SIO_WRITE(&sio0,1);
 	}else{
 		SCI_WRITE(&sci0, "Paused \n");
@@ -369,6 +338,8 @@ void pause(Sound *self, int arg){
 }
 void pause_c(Controller *self, int arg){
 	self->play = ! self->play;
+	ASYNC(&controller,toggle_led, self->bpm);
+	ASYNC(&controller,startSound,self->bpm);
 }
  
 void change_key(Controller *self, int num){
@@ -382,12 +353,12 @@ void change_bpm(Controller *self, int num){
 	
 	if(num>=30&&num<=300){
 		self->bpm = num;
+		
+
 	}else{
 		SCI_WRITE(&sci0, "Invalid BPM! \n");
 	}
-	
-	ASYNC(&controller,toggle_led,0);
-}
+}	
 /*protocol
  * msgId 1: inc the volumn
  * msgId 2: dec the volumn
