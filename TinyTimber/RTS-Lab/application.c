@@ -1,4 +1,5 @@
 /*User Guide
+!! The default mode is paused, press 'p' to play after 'go'
 
 */
 #include "TinyTimber.h"
