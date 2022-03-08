@@ -99,7 +99,7 @@ void check_hold(App *self, int unused){
 	Time now = T_SAMPLE(&self->timer) ;
 	if((now-self->previous_time)>=SEC(1)&&(state==0))
 	//press state: 1 for released, 0 for pressed
-		SCI_WRITE(&sci0,"Entered press-hold mode\n");
+	SCI_WRITE(&sci0,"Entered press-hold mode\n");
 
 	
 }
@@ -125,12 +125,12 @@ void three_history(App *self,Time num){
 		if(abs(self->nums[0]-self->nums[1])<MSEC(100) &&
 		abs(self->nums[0]-self->nums[2])<MSEC(100) &&
 		abs(self->nums[2]-self->nums[1])<MSEC(100) ){
-			//calculate avg,change bpm
-			Time avg = (self->nums[0]+self->nums[1]+self->nums[2])/3;
-			float new_time = SEC_OF(avg) + (float)(MSEC_OF(avg))/1000.0;
-			int new_bpm = (int)60.0/new_time;
-			 char output[200];
-   			 snprintf(output,200,"New bpm is %d\n", new_bpm);
+		//calculate avg,change bpm
+		Time avg = (self->nums[0]+self->nums[1]+self->nums[2])/3;
+		float new_time = SEC_OF(avg) + (float)(MSEC_OF(avg))/1000.0;
+		int new_bpm = (int)60.0/new_time;
+	 	char output[200];
+	 	snprintf(output,200,"New bpm is %d\n", new_bpm);
     		SCI_WRITE(&sci0,output);
 			
 			SYNC(&controller,change_bpm,new_bpm);
@@ -319,7 +319,7 @@ void startSound(Controller* self, int arg){
 		else  SIO_WRITE(&sio0,0);
 		AFTER(MSEC(500*interval),&controller,toggle_led,self->bpm);
 	}
-	 self->note = (self->note+1)%32;
+	self->note = (self->note+1)%32;
     SEND(MSEC(tempo*500*interval-50),MSEC(50),&generator,gap,0);
     SEND(MSEC(tempo*500*interval),MSEC(tempo*250*interval),self,startSound,self->bpm);
 
@@ -538,7 +538,7 @@ int main()
 {
     INSTALL(&sci0, sci_interrupt, SCI_IRQ0);
     INSTALL(&can0, can_interrupt, CAN_IRQ0);
-	INSTALL(&sio0,sio_interrupt, SIO_IRQ0);
+    INSTALL(&sio0,sio_interrupt, SIO_IRQ0);
     TINYTIMBER(&app, startApp, 0);
     return 0;
 }
