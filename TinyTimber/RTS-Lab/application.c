@@ -1,5 +1,51 @@
 /*User Guide
+
+Compile and upload the .s19 file to the experiment board, type "go" to start the execution.
+ 
 !! The default mode is paused, press 'p' to play after 'go'
+
+
+ VOLUME CONTROL
+ 
+ - For increasing volume press "q"
+ - For decreasing press "a"
+ 
+ MUTE CONTROL
+ 
+ - For mute and unmute press "m"
+ 
+ LOAD CONTROL
+ 
+ - For increasing background load press "w"
+ - For decreasing background load press "s"
+ 
+ DEADLINE CONTROL
+  
+ - For enable and disable deadline press "d"
+ 
+ PLAY
+  
+ - To pause and play press "p"
+ 
+ CHANGE KEY
+
+ - When a number pressed with "k" at the end new key value is set
+ 
+ CHANGE BPM
+
+ - When a number pressed with "b" at the end new bpm value is set
+ 
+ PRESS HOLD FUNCTIONALITY
+ 
+ - When user button is pressed for  at least 1 seconds, it enters press hold mode
+ 
+ RESET BPM
+ 
+  - When user button is pressed for  at least 2 seconds, it resets bpm to 120
+ 
+ CHANGE TEMPO FROM USER BUTTON
+ 
+ - In the serial momentary presses with user button new bpm is set.
 
 */
 #include "TinyTimber.h"
@@ -85,15 +131,7 @@ Can can0 = initCan(CAN_PORT0, &app, receiver);
  * 		
  */
 
-/*
-void check_momentary(App *self, int unused){
-	int state = SIO_READ(&sio0);
-	//press state: 1 for released, 0 for pressed
-	if(state==1){
-		self->momentary = 1;
-	}
-}
- */
+
 void check_hold(App *self, int unused){
 	int state = SIO_READ(&sio0);
 	Time now = T_SAMPLE(&self->timer) ;
